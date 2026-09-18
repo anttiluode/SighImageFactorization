@@ -701,13 +701,93 @@ The mechanism therefore survives removal of direct velocity input.
 This also sharpens the next limitation. Gate 14 intentionally makes appearance
 regions easy to recover and keeps their texture stable.
 
+## Gate 15: confidence belongs to the relation
+
+Gate 14's RGB motion estimator was essentially oracle-perfect. Gate 15 makes its
+correspondence actively ambiguous.
+
+For each of four pre-contact local tracking probes, candidate B undergoes:
+
+```text
+appearance jump       0.15
+partial occlusion     1 column
+look-alike blend      0.50
+```
+
+A visually plausible B continuation is placed near the displacement predicted by
+candidate A. If true B motion differs, template matching is often lured onto the
+look-alike.
+
+That creates a particularly dangerous error: **false common fate**.
+
+CI reference, 80 training / 120 held-out histories:
+
+```text
+learned residual threshold              0.000000
+learned confidence threshold            0.596747
+
+residual-only cue:
+    accuracy                             0.5167
+    false positive                       0.9667
+
+confidence-gated cue:
+    accuracy                             0.9250
+    false negative                       0.0500
+    false positive                       0.1000
+
+oracle-motion cue accuracy               0.9750
+```
+
+The motion residual has been successfully attacked:
+
+```text
+median RGB residual, genuine             0.0
+median RGB residual, accidental          0.0
+```
+
+But the tracker's own confidence has not:
+
+```text
+median minimum confidence, genuine       0.64925
+median minimum confidence, accidental    0.32217
+```
+
+The downstream relation dynamics make the consequence concrete:
+
+| policy | genuine merge | accidental merge | balanced accuracy |
+|---|---:|---:|---:|
+| global cautious tau=96 | 0.000 | 0.000 | 0.500 |
+| always fast tau=16 | 0.850 | 0.767 | 0.542 |
+| residual-only clock | 0.850 | 0.733 | 0.558 |
+| **confidence-gated clock** | **0.800** | **0.050** | **0.875** |
+| shuffled confidence | 0.533 | 0.317 | 0.608 |
+
+This establishes a new piece of the mechanism:
+
+[
+\boxed{
+\text{evidence says what relation to propose}
+\quad + \quad
+\text{confidence says how much causal authority it earns}
+}
+]
+
+Global caution also prevents false merges, but it cannot bind any genuine
+relation quickly. The confidence gate localizes the caution to the doubtful
+track.
+
 ## Next attacker
 
-Attack the **track itself**. Use visually similar foreground regions, partial
-occlusion, and appearance changes so that local RGB correspondence becomes
-uncertain. Relation admission should then depend on calibrated track confidence
-or prediction error rather than a clean region identity.
+Turn the one-shot confidence veto into **recoverable uncertainty**. A relation
+should slow down when correspondence becomes ambiguous, then regain authority
+when clean evidence returns. The next gate should therefore use a sequence with
+clear -> occluded/ambiguous -> clear phases and compare:
 
-The important question is whether uncertainty can slow only the doubtful edge
-without globally slowing every relation back to Gate 12's age-only behavior.
+- permanent veto after one bad observation,
+- naive averaging that forgets danger too quickly,
+- and a local confidence/eligibility state with attack and recovery timescales.
+
+The required result is hysteresis without paralysis: transient ambiguity should
+not merge identities, but later repeated clean evidence should let a genuine
+relation recover its fast clock.
 
