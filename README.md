@@ -1,148 +1,248 @@
 # SighImageFactorization
 
-**Perfect-reconstruction residue trajectories for PCA, ICA, independent subspaces, and source separation.**
+**From purification residues to self-written grouping operators.**
 
-This repo takes one small step sideways from [SighImageSuper](https://github.com/anttiluode/SighImageSuper).
+This repo is a direct branch of [SighImageSuper](https://github.com/anttiluode/SighImageSuper).
 
-SighImageSuper repeatedly applies a known linear spectral operator,
+The starting observation is still tiny.  If an iterative process is
 
 [
-x_{k+1}=A x_k,
+x_{k+1}=A_k x_k,
 ]
 
-and watches the image purify toward the operator's maximum-gain mode. The obvious movie keeps only the current state. This repo keeps **what disappears**:
+save every departure
 
 [
 r_k=x_k-x_{k+1}.
 ]
 
-Then the whole forward trajectory is an exact finite-depth representation:
+Then, regardless of whether the operators change,
 
 [
 oxed{x_0=sum_{k=0}^{N-1}r_k+x_N}.
 ]
 
-Nothing needs to be numerically inverted. The purification loop carries its own bookkeeping.
+The purification trajectory can therefore be kept instead of discarded.
 
-## Why this might matter
-
-For a fixed operator,
-
-[
-r_k=(I-A)A^k x_0.
-]
-
-So one iterative operator automatically generates a filter bank indexed by **operator lifetime**: what dies immediately, what survives several passes, and what reaches the terminal state.
-
-The scientific question is not whether this representation is lossless; Gate 0 makes that algebraically trivial. The question is:
-
-> **Does this residue geometry make independently generated structure easier to factor under constrained observation than equally large, equally conditioned generic linear coordinates?**
-
-That wording is deliberate. A linear transform cannot create source information. PCA/ICA are microscopes here, not magic. If the residue coordinates help, the gain must come from an inductive bias in *which directions are made important under a bottleneck*.
+The repo began by asking whether this **temporal residue space** itself makes
+independent sources or objects easier to discover.  Gates 0--2 established an
+important negative boundary.  Gates 3--4 now move the interesting mechanism
+from the coordinate transform into the **operator that performs the grouping**.
 
 ## Gate 0 — exact residue receipt
 
-`gate0_exact_residue.py` uses the same radial high-pass preset as SighImageSuper and verifies
+`gate0_exact_residue.py` uses the same radial high-pass preset as
+SighImageSuper and verifies machine-precision reconstruction from all saved
+departures plus the terminal state.
 
-```text
-x0 -> x1 -> x2 -> ... -> xN
- |     |     |
- r0    r1    r2          + terminal xN
-```
+Measured relative reconstruction error: about **1.6e-16**.
 
-with machine-precision reconstruction.
+## Gate 1 — PCA / ICA source-separation attack
 
-## Gate 1 — source separation with attackers
+`gate1_source_separation.py` forces four representations through the same
+three-dimensional PCA bottleneck and the same NumPy FastICA implementation:
 
-`gate1_source_separation.py` constructs three independently varying localized source images with different carrier/persistence structure. Every representation is forced through the **same three-dimensional PCA bottleneck** before the same NumPy FastICA implementation.
+1. raw pixels;
+2. orthogonal redundant coordinates;
+3. a random encoder with the same singular values as the Sigh encoder;
+4. the Sigh residue stack.
 
-Four representations compete:
+Initial attacked medians over three seeds:
 
-1. **raw pixels** — ordinary baseline;
-2. **orthogonal redundant embedding** — same expanded dimensionality, no metric distortion;
-3. **matched-spectrum random encoder** — same sizes and exactly the same singular values as the Sigh residue encoder, but random singular directions;
-4. **Sigh residue stack** — actual temporal-residue geometry.
-
-The first attacked run is a **negative result**:
-
-| representation | attacked median latent recovery (3 seeds) |
+| representation | latent recovery |
 |---|---:|
 | raw pixels | 0.938 |
 | orthogonal redundant | 0.938 |
 | matched-spectrum random | 0.942 |
 | **Sigh residue** | **0.672** |
 
-The clean rank-3 condition is about 0.99 for every representation, as expected.
+So **residue time did not create source separation**.
 
-## Gate 2 — frame geometry explains the loss
+## Gate 2 — frame geometry explains the failure
 
-Exact reconstruction is not the same as an isometric representation. The stacked residue encoder is a redundant **frame** whose Euclidean norm weights different spectral directions differently.
+The residue transform is exactly reconstructible but not isometric.  Its frame
+operator has eigenvalues roughly **0.138 .. 1.000**, condition number **7.246**,
+and one of the Gate-1 source maps receives only about **0.682** norm gain.
 
-For the three source maps in Gate 1, the induced norm gains are approximately:
-
-```text
-source 1   0.994
-source 2   0.986
-source 3   0.682
-```
-
-Gate 2 tightens the frame,
+After tightening the frame,
 
 [
 T_{tight}=(TT^	op)^{-1/2}T,
 ]
 
-and measures:
+we measure:
 
 ```text
-frame eigenvalue range             0.138 .. 1.000
-frame condition number             7.246
-tight-frame identity error         8.55e-15
+||T_tight T_tight^T - I||_2       8.55e-15
 raw vs tight singular spectrum     1.26e-15 relative error
 ```
 
-Once tightened, the expanded residue representation preserves every input inner product. Global PCA therefore sees the same nonzero singular spectrum as raw pixels.
+Thus a global full-rank linear residue transform cannot conjure objects merely
+by renaming coordinates.
 
-> **A full-rank linear residue transform alone does not create source separation. Any useful gain must come from its metric bias or from a downstream constraint/nonlinearity that can exploit the residue axis.**
+## The AKOrN clue
 
-That changes the next experiment. The promising directions are local/grouped residue features (ISA), sparse/limited access to depth channels, nonlinear residue energy, and real temporal motion where object parts can bind by common trajectory.
+Miyato, Lowe, Geiger & Welling's
+[Artificial Kuramoto Oscillatory Neurons](https://arxiv.org/abs/2410.13821)
+(ICLR 2025) is useful here because its object binding does **not** live in a
+fixed linear image transform.  It uses repeated projected oscillator dynamics,
+input-conditioned stimuli and learned convolutional/attention connectivity.
 
-## What this repo is *not* claiming
+That suggests a stricter question for this repo:
 
-It is not claiming that ICA components are semantic objects. The stronger future hypothesis is that an object could become a **coherent subspace of residue trajectories**, especially once real time/motion is added.
+> **If the input writes the interaction operator, what is due to the operator
+> itself and what is due to nonlinear synchronization?**
 
-A plausible progression is:
+## Gate 3 — same graph: diffusion versus Kuramoto
+
+`gate3_same_graph_binding.py` makes a local RGB affinity graph from a synthetic
+image.  Two spatially separate objects deliberately have the same colour, so a
+global colour/position clustering cannot simply assign them unique identities.
+
+The graph is then held fixed.
+
+The same random **8-D unit-vector field** is evolved in two ways:
 
 ```text
-Sigh residue transform
-        -> PCA whitening/compression
-        -> ICA (independent factors)
-        -> ISA / grouped factors
-        -> moving-source tests
-        -> learn the operator questions themselves
+linear:
+    X <- (1-gamma) X + gamma P X
+
+vector Kuramoto-style:
+    Y <- P X
+    X <- normalize(X + gamma Proj_X(Y))
 ```
 
-The interesting endpoint would be: **do not merely learn objects; learn a sequence of questions under which objects separate themselves.**
+Both get the same graph, initialization, step size, checkpoints and k-means
+readout.  A static spectral clustering result is included as the graph-only
+reference.
 
-## Lineage
+Six-seed initial result:
+
+```text
+raw colour+xy median ARI                 0.439
+spectral graph median ARI                1.000
+
+step 128:
+    linear diffusion median ARI          0.421
+    vector Kuramoto median ARI           0.444
+
+step 256:
+    linear diffusion median ARI          0.734
+    vector Kuramoto median ARI           0.723
+
+step 512:
+    linear diffusion median ARI          1.000
+    vector Kuramoto median ARI           1.000
+
+median first checkpoint with ARI >= .95:
+    linear                              384
+    Kuramoto                            384
+```
+
+So in this stripped-down setting **synchronization is not yet the extra
+ingredient**.  The input-derived graph contains the useful partition and both
+local dynamics eventually reveal it on essentially the same timescale.
+
+This is useful because it prevents us from crediting an oscillator merely for
+solving a clustering problem already encoded in its connectivity.
+
+The residue identity still holds for either trajectory: saving every state
+departure reconstructs its initial distributed state to floating-point
+precision.
+
+## Gate 4 — common fate writes the operator
+
+`gate4_common_fate_write.py` tests the more interesting hypothesis.
+
+Each synthetic object contains two appearance regions.  Static appearance
+affinity therefore wants to split the object.  During a controlled motion
+episode, the learner observes local feature pairs and their motion vectors.
+
+If two unlike neighbouring features repeatedly have the same non-zero motion,
+
+[
+	ext{common fate}
+longrightarrow
+	ext{persistent feature-pair compatibility}.
+]
+
+The objects are then placed at **new coordinates and stopped**.  The same
+spectral readout is applied to four operators:
+
+```text
+static appearance
+common-fate feature memory
+part-shuffled motion
+absolute-coordinate edge memory
+```
+
+Across three new placements:
+
+| operator | median ARI |
+|---|---:|
+| static appearance | 0.755 |
+| **common-fate feature memory** | **1.000** |
+| part-shuffled motion | 0.755 |
+| coordinate memory | 0.755 |
+
+The learned relation is specifically:
+
+```text
+shared feature 1 <-> object-1 feature 2    ~1.0
+shared feature 1 <-> object-2 feature 3    ~1.0
+```
+
+When the two parts are given opposing motion, those compatibilities collapse
+to about `1e-14`.
+
+This gate is deliberately modest.  It uses **oracle motion** and discrete
+appearance types.  It does not claim natural-image object discovery.
+
+What it does establish is the mechanism we wanted to isolate:
+
+> **history can rewrite a grouping operator in feature space, and that operator
+> can bind a later static scene at new locations.**
+
+That is the first place in this repo where history changes what a future image
+means.
+
+## Current picture
 
 ```text
 SighImageSuper
-  purification trajectory
-        |
-        v
-save every departure r_k
-        |
-        v
-SighImageFactorization
-  exact residue space
-        |
-        +--> PCA / ICA attackers
-        +--> frame-geometry boundary
-        +--> independent subspaces / motion (next)
+    |
+    | save what disappears
+    v
+exact residue trajectory
+    |
+    +-- global PCA / ICA ----------------------> boundary: no magic objects
+    |
+    v
+input-derived affinity operator
+    |
+    +-- linear diffusion
+    +-- vector synchrony ----------------------> same graph, same answer
+    |
+    v
+common fate writes persistent affinity
+    |
+    v
+later static grouping at a new location
 ```
 
-The high-pass filter implementation is intentionally copied mathematically from SighImageSuper's Gate 0 so this is a real branch of that experiment rather than a new toy with the same name.
+The new working hypothesis is no longer
+
+> residue time itself is the object space.
+
+It is:
+
+> **the operator creates the grouping; the residue records the grouping
+> trajectory; history can rewrite the operator.**
+
+The next gate should remove one piece of scaffolding at a time: replace
+discrete appearance types with continuous local features, replace oracle motion
+with estimated correspondence/flow, then ask whether the learned operator
+survives clutter, occlusion and novel arrangements.
 
 ## Requirements
 
@@ -153,9 +253,11 @@ Run:
 
 ```bash
 python -m unittest discover -s tests -v
-python gate0_exact_residue.py --json results/gate0.json
-python gate1_source_separation.py --samples 256 --seeds 3 --json results/gate1.json
-python gate2_frame_geometry.py --json results/gate2.json
+python gate0_exact_residue.py
+python gate1_source_separation.py --samples 256 --seeds 3
+python gate2_frame_geometry.py
+python gate3_same_graph_binding.py
+python gate4_common_fate_write.py
 ```
 
-No SciPy or scikit-learn is required; the small symmetric FastICA implementation is included so the gate stays inspectable.
+No SciPy or scikit-learn is required.
