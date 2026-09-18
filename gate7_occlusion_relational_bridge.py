@@ -409,14 +409,27 @@ def main() -> None:
             "relational_gap_bridge": summarize("relational_gap_bridge"),
             "proximity_gap_bridge": summarize("proximity_gap_bridge"),
         },
+        "relational_collision_scenes": int(
+            sum(
+                row["relational_gap_bridge"]["cross_object_collision_count"] > 0
+                for row in rows
+            )
+        ),
+        "proximity_collision_scenes": int(
+            sum(
+                row["proximity_gap_bridge"]["cross_object_collision_count"] > 0
+                for row in rows
+            )
+        ),
         "interpretation": (
             "Occlusion breaks the contact required by a purely local learned "
-            "operator. Proximity can reconnect the visible islands but also "
-            "merges nearby clutter. Region-level relations learned from common "
-            "motion authorize exactly the nonlocal bridges supported by prior "
-            "history. The earlier single-pixel bridge criterion was unsafe; "
-            "nonlocal identity requires evidence at the abstraction level of "
-            "the edge being created."
+            "operator. Region-level common-fate relations repair fragmentation, "
+            "but they are type-level relations rather than instance identity: "
+            "when two compatible objects come within the same short gap, the "
+            "relation can cross-bind the wrong instances. Proximity-only bridging "
+            "is worse and also merges the distractor. The next missing variable "
+            "is an instance-specific persistent address (phase, slot, track, or "
+            "equivalent state), not a more permissive affinity threshold."
         ),
         "rows": rows,
     }
@@ -428,11 +441,18 @@ def main() -> None:
         local = row["local_memory"]
         prox = row["proximity_gap_bridge"]
 
+        # Engineering invariants plus the scientific negative boundary:
+        # relation memory always repairs within-object fragmentation, but is not
+        # sufficient to guarantee instance identity in every close layout.
         assert rel["mean_object_fragmentation"] <= 1.0
-        assert rel["mixed_truth_component_count"] == 0
-        assert rel["cross_object_collision_count"] == 0
         assert local["mean_object_fragmentation"] > 1.0
         assert prox["cross_object_collision_count"] > 0
+
+    assert report["relational_collision_scenes"] > 0
+    assert (
+        report["relational_collision_scenes"]
+        < report["proximity_collision_scenes"]
+    )
 
     if args.json:
         Path(args.json).write_text(
