@@ -1,66 +1,49 @@
 {
-  "training_episodes": 3,
-  "test_scenes": 12,
-  "estimated_binding_examples": 42,
-  "oracle_binding_examples": 48,
-  "time_shuffled_binding_examples": 0,
-  "estimated_memory_radius": 0.02410886222259174,
-  "oracle_memory_radius": 0.02410886222259174,
-  "flow_quality": [
-    {
-      "episode": 0,
-      "valid_foreground_pixels": 112,
-      "foreground_exact_displacement_fraction": 0.9642857142857143,
-      "foreground_mean_endpoint_error": 0.07512690680690264,
-      "valid_background_pixels": 170,
-      "background_zero_displacement_fraction": 0.9823529411764705
-    },
-    {
-      "episode": 1,
-      "valid_foreground_pixels": 117,
-      "foreground_exact_displacement_fraction": 1.0,
-      "foreground_mean_endpoint_error": 0.0,
-      "valid_background_pixels": 163,
-      "background_zero_displacement_fraction": 0.9877300613496932
-    },
-    {
-      "episode": 2,
-      "valid_foreground_pixels": 109,
-      "foreground_exact_displacement_fraction": 0.9908256880733946,
-      "foreground_mean_endpoint_error": 0.012974436352046745,
-      "valid_background_pixels": 170,
-      "background_zero_displacement_fraction": 0.9941176470588236
-    }
-  ],
-  "summary": {
+  "protocol": {
+    "training_frames_per_run": 2,
+    "runs": 20,
+    "test_positions_per_run": 5,
+    "estimated_motion": "local 5x5 patch correspondence with center-colour anchoring, forward/backward consistency, confidence and cost rejection",
+    "time_shuffled_control": "first frame paired with an unrelated future frame"
+  },
+  "flow_estimator": {
+    "median_moving_pixel_coverage": 0.84375,
+    "median_valid_moving_pixel_accuracy": 1.0
+  },
+  "run_level_summary": {
     "static": {
-      "median_ari": 0.9487054225696141,
-      "min_ari": 0.9487054225696141,
-      "median_component_count": 5.0,
-      "median_object_fragmentation": 2.0,
-      "max_object_fragmentation": 2.0
-    },
-    "oracle_flow_memory": {
-      "median_ari": 1.0,
-      "min_ari": 0.8970184386033738,
+      "median_ari": 0.4811227515319233,
+      "min_run_median_ari": 0.4811227515319233,
+      "exact_run_fraction": 0.0,
       "median_component_count": 3.0,
-      "median_object_fragmentation": 1.0,
-      "max_object_fragmentation": 1.0
+      "median_object_fragmentation": 2.0
     },
-    "estimated_flow_memory": {
+    "estimated_motion": {
       "median_ari": 1.0,
-      "min_ari": 0.8970184386033738,
+      "min_run_median_ari": 0.5586708203530634,
+      "exact_run_fraction": 0.9,
       "median_component_count": 3.0,
-      "median_object_fragmentation": 1.0,
-      "max_object_fragmentation": 1.0
+      "median_object_fragmentation": 1.0
+    },
+    "oracle_motion": {
+      "median_ari": 1.0,
+      "min_run_median_ari": 1.0,
+      "exact_run_fraction": 1.0,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0
     },
     "time_shuffled": {
-      "median_ari": 0.9487054225696141,
-      "min_ari": 0.9487054225696141,
-      "median_component_count": 5.0,
-      "median_object_fragmentation": 2.0,
-      "max_object_fragmentation": 2.0
+      "median_ari": 0.4811227515319233,
+      "min_run_median_ari": 0.4811227515319233,
+      "exact_run_fraction": 0.0,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 2.0
     }
   },
-  "interpretation": "Center-anchored local RGB correspondence recovers common-fate evidence without oracle motion. Estimated-flow memory matches the oracle upper bound on later static binding, while time-shuffled frame pairs produce no binding examples. Static and shuffled conditions still fragment each true object into two parts."
+  "scene_level_summary": {
+    "estimated_motion_exact_fraction": 0.84,
+    "oracle_motion_exact_fraction": 0.97,
+    "time_shuffled_binding_examples_total": 0
+  },
+  "interpretation": "A single pair of consecutive RGB frames is usually enough to estimate common fate and write a continuous pair-affinity relation that survives after motion stops and the objects relocate. Oracle flow closes the remaining gap, localizing failures to correspondence or pair-memory noise. Time shuffling destroys the evidence and returns to the static fragmented baseline."
 }
