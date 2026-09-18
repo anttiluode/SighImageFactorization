@@ -1,0 +1,31 @@
+{
+  "gate3": {
+    "seeds": 6,
+    "state_dimension": 8,
+    "gamma": 0.8,
+    "steps": 512,
+    "raw_color_xy_median_ari": 0.43879799253917734,
+    "spectral_graph_median_ari": 1.0,
+    "linear_median_ari_step_128": 0.4208352355597216,
+    "kuramoto_median_ari_step_128": 0.44400029324646706,
+    "linear_median_ari_step_256": 0.733661469649615,
+    "kuramoto_median_ari_step_256": 0.7233016991800822,
+    "linear_median_ari_step_512": 1.0,
+    "kuramoto_median_ari_step_512": 1.0,
+    "linear_median_first_checkpoint_ari_ge_0_95": 384.0,
+    "kuramoto_median_first_checkpoint_ari_ge_0_95": 384.0,
+    "interpretation": "The graph contains the partition; stripped-down vector synchrony does not beat matched linear diffusion."
+  },
+  "gate4": {
+    "final_placements": 3,
+    "static_appearance_median_ari": 0.7548718452805151,
+    "common_fate_feature_memory_median_ari": 1.0,
+    "part_shuffled_motion_median_ari": 0.7548718452805151,
+    "coordinate_memory_median_ari": 0.7548718452805151,
+    "coherent_compatibility_1_2": 1.0,
+    "coherent_compatibility_1_3": 1.0,
+    "part_shuffled_compatibility_1_2": 1.2664165549094176e-14,
+    "part_shuffled_compatibility_1_3": 1.2664165549094176e-14,
+    "interpretation": "Common fate writes a feature-space grouping relation that transfers to new coordinates after motion stops."
+  }
+}

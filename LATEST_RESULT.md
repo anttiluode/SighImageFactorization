@@ -1,56 +1,121 @@
-# Latest result — v0 linear factorization boundary
+# Latest result — affinity binding boundary
 
-## Gate 0: exact residue representation
+## Gates 0--2: residue space boundary
 
-For the SighImageSuper high-pass operator, storing each departure
-
-[
-r_k=x_k-x_{k+1}
-]
-
-makes the finite trajectory exactly reconstructible:
+The finite Sigh trajectory remains exactly reconstructible:
 
 [
-x_0=sum_k r_k+x_N.
+x_0=sum_k(x_k-x_{k+1})+x_N.
 ]
 
-Measured relative reconstruction error at 32x32, depth 12: **1.64e-16**.
+Gate 1 nevertheless found that global PCA -> ICA on the raw Sigh residue stack
+does **not** improve additive source separation under nuisance.  Initial
+three-seed attacked medians were:
 
-## Gate 1: PCA -> ICA source separation
-
-Three independently varying localized sources were mixed, then every representation was forced through the same 3-D PCA bottleneck and the same NumPy FastICA implementation.
-
-Controls were raw pixels, an orthogonal tall embedding, and a random tall encoder with **exactly the same singular values** as the Sigh residue encoder.
-
-Initial 3-seed attacked medians:
-
-| representation | score |
+| representation | recovery |
 |---|---:|
 | raw pixels | 0.93795 |
 | orthogonal redundant | 0.93795 |
 | matched-spectrum random | 0.94231 |
-| **Sigh residue** | **0.67195** |
+| Sigh residue | 0.67195 |
 
-Sigh therefore **fails** the first source-separation claim. We do not tune the scene until it wins.
+Gate 2 explains why.  The residue encoder is exact but non-isometric
+(frame condition number **7.246**).  Tightening makes it an isometry and
+reproduces the raw nonzero singular spectrum to **1.26e-15** relative error.
 
-## Gate 2: why the failure happens
+Boundary: **a global full-rank linear residue transform does not create object
+separation.**
 
-The residue encoder is exact but not isometric. Its frame operator has eigenvalues from **0.137998** to **1.0** (condition number **7.246**). The three synthetic source maps receive norm gains **0.994, 0.986, 0.682** respectively in residue space.
+## Gate 3: same graph, two dynamics
 
-After Parseval/tight-frame correction,
+A local RGB affinity graph was built from a 16x16 synthetic scene.  Two
+spatially separate objects share the same colour, so raw colour+position
+clustering cannot simply label them separately.
+
+The graph was held fixed while the same random 8-D unit-vector field evolved
+under either linear diffusion or a stripped-down vector Kuramoto projected
+update.
+
+Six-seed medians:
+
+| measurement | linear | Kuramoto |
+|---|---:|---:|
+| ARI at step 128 | 0.421 | 0.444 |
+| ARI at step 256 | 0.734 | 0.723 |
+| ARI at step 512 | 1.000 | 1.000 |
+| first checkpoint ARI >= .95 | 384 | 384 |
+
+Controls:
+
+- raw colour+xy median ARI: **0.439**
+- graph-only spectral clustering median ARI: **1.000**
+
+Both dynamic trajectories retain the exact telescoping residue receipt to
+about 1e-15.
+
+Interpretation: in this controlled static case the **input-derived graph**
+contains the useful object partition.  Nonlinear synchronization is an
+alternative local solver/binder, but does not add measurable grouping
+information beyond matched linear diffusion.
+
+## Gate 4: common fate writes a persistent operator
+
+Each object now consists of two unlike appearance regions.  Static appearance
+affinity tends to split those regions.
+
+During a synthetic motion episode we observe local feature pairs plus oracle
+motion vectors.  Unlike neighbouring features that share the same non-zero
+motion write a persistent compatibility into the next affinity operator.
+
+The objects are then moved to new positions and stopped.
+
+Across three new placements:
+
+| operator | median ARI |
+|---|---:|
+| static appearance | 0.75487 |
+| **common-fate feature memory** | **1.00000** |
+| part-shuffled motion | 0.75487 |
+| coordinate-edge memory | 0.75487 |
+
+The coherent-motion episode learns feature compatibilities 1<->2 and 1<->3
+at **1.0**.  When the two parts are assigned opposing motion, the same
+compatibilities are only about **1.27e-14**.
+
+The coordinate-memory attacker stores the old absolute boundary edges.  It
+does not help once the objects stop elsewhere.
+
+### What this establishes
+
+This is still a synthetic mechanism gate: motion is oracle-provided and
+appearance is discretized.
+
+But it isolates a substantially stronger primitive than the original
+PCA/ICA idea:
 
 [
-T_{tight}=(TT^	op)^{-1/2}T,
+oxed{
+	ext{shared history}
+ightarrow
+	ext{operator rewrite}
+ightarrow
+	ext{future static grouping}
+}
 ]
 
-we measure:
+The operator creates the grouping.  The residue stack is now best viewed as a
+record of the grouping trajectory rather than the source of grouping itself.
 
-- `||T_tight T_tight^T - I||_2 = 8.55e-15`
-- raw-vs-tight nonzero singular-spectrum relative error = `1.26e-15`
-- all three source norm gains = 1 to numerical precision.
+## Next attacker
 
-## Boundary established
+Remove the scaffolding in order:
 
-A global full-rank **linear** residue coordinate transform cannot conjure independent objects. With an isometric frame it is just a redundant change of coordinates; with the raw frame it adds a particular metric bias, and Gate 1 shows that this bias can be harmful.
+1. continuous RGB/local feature embeddings instead of discrete appearance IDs;
+2. estimated correspondence/flow instead of oracle motion;
+3. occlusion and clutter;
+4. a learned persistent state that writes the affinity without an explicit
+   hand-coded common-fate rule.
 
-The next scientifically meaningful mechanisms must use something the equivalence argument does not remove: locality, grouping/ISA, sparse access to residue depth, nonlinear residue energy, learned noncommuting operator questions, or real world-time/motion.
+The strongest kill condition remains location transfer: a system that only
+remembers where the moving blob was must fail when the same object stops
+somewhere else.

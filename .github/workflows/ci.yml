@@ -20,3 +20,5 @@ jobs:
       - run: python gate0_exact_residue.py
       - run: python gate1_source_separation.py --samples 256 --seeds 3
       - run: python gate2_frame_geometry.py
+      - run: python gate3_same_graph_binding.py --seeds 3
+      - run: python gate4_common_fate_write.py
