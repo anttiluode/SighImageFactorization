@@ -516,6 +516,64 @@ It is not evidence that 8-D is optimal, nor that biological binding uses this
 code. It shows why a multidimensional unit-vector state can be useful even when
 all interactions are strictly local and attractive.
 
+## Gate 11 — temporary contact needs a relation timescale
+
+Gate 10 succeeds because different instances are disconnected. Gate 11 attacks
+that assumption.
+
+After each object's two local components have synchronized into a D=8 address,
+the two objects temporarily become **local same-motion neighbours**. Under the
+Gate-10 rule this is a perfectly legal new attractive edge.
+
+Two edge policies compete:
+
+```text
+instantaneous:
+    new local edge weight = 1 immediately
+
+persistence-gated:
+    w[t+1] = w[t] + (1 - w[t]) / tau
+    tau = 64
+```
+
+The second rule is not claimed to be optimal. It asks one narrow question:
+should new relational evidence have to persist before it is allowed to rewrite
+an already-established instance identity?
+
+Across **5,000 random D=8 address trials**:
+
+| same-motion contact | instantaneous collision | persistence-gated collision |
+|---:|---:|---:|
+| 8 steps | 0.04% | 0% |
+| 16 steps | 13.02% | 0% |
+| 32 steps | **100%** | **0.08%** |
+| 64 steps | 100% | 99.98% |
+| 128 steps | 100% | 100% |
+
+Collision means the two object addresses cross the same cosine >= 0.99 identity
+threshold used by Gate 10.
+
+At 32 contact steps the median cross-instance cosine is:
+
+```text
+instantaneous coupling        0.999612
+persistence-gated coupling    0.866135
+```
+
+Then the contact is removed and both objects evolve for another 120 steps using
+only their original internal edges. The collision fractions remain **100%**
+versus **0.08%**. With no separating force, an identity collapse does not
+repair itself merely because the objects separate again.
+
+The important result is therefore a new boundary:
+
+> **address capacity is not enough; instance identity also needs a timescale
+> for admitting new relations.**
+
+The persistence gate is deliberately finite rather than absolute. Long enough
+shared contact eventually wins. It acts as a temporal causal filter: transient
+contact should not instantly redefine identity, while sustained evidence may.
+
 ## Current picture
 
 ```text
@@ -573,7 +631,7 @@ python gate6_estimated_motion_write.py --test-scenes 6
 python gate7_occlusion_relational_bridge.py --scenes 6
 python gate8_persistent_phase_address.py --scenes 6
 python gate9_emergent_phase_address.py --scenes 6
-python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
+python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000\npython gate11_contact_persistence.py --trials 5000
 ```
 
 No SciPy or scikit-learn is required.
