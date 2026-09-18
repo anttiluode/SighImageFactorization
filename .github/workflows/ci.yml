@@ -22,3 +22,4 @@ jobs:
       - run: python gate2_frame_geometry.py
       - run: python gate3_same_graph_binding.py --seeds 3
       - run: python gate4_common_fate_write.py
+      - run: python gate5_continuous_common_fate.py --samples 6

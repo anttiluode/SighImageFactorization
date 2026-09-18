@@ -1,0 +1,28 @@
+{
+  "training_frames": 3,
+  "test_scenes": 12,
+  "coherent_memory_radius": 0.006483381837829711,
+  "part_split_memory_radius": 0.006365137161432945,
+  "radius_rule": "3 * 99th percentile leave-one-out nearest same-target pair distance",
+  "affinity_threshold": 0.5,
+  "static": {
+    "median_ari": 0.4811227515319233,
+    "min_ari": 0.4811227515319233,
+    "median_component_count": 3.0,
+    "median_object_fragmentation": 2.0
+  },
+  "coherent_common_fate": {
+    "median_ari": 0.9966024982401764,
+    "min_ari": 0.8970184386033738,
+    "median_component_count": 3.0,
+    "median_object_fragmentation": 1.0,
+    "max_object_fragmentation": 1.0
+  },
+  "part_split_motion": {
+    "median_ari": 0.9487054225696141,
+    "min_ari": 0.9419276680062293,
+    "median_component_count": 5.0,
+    "median_object_fragmentation": 2.0
+  },
+  "interpretation": "Continuous RGB-pair common-fate memory binds unlike parts across new positions and fresh appearance noise. High ARI alone is insufficient: differential-motion foreground separation can score highly while leaving each object fragmented."
+}

@@ -106,6 +106,51 @@ PCA/ICA idea:
 The operator creates the grouping.  The residue stack is now best viewed as a
 record of the grouping trajectory rather than the source of grouping itself.
 
+## Gate 5: continuous RGB-pair memory
+
+The discrete appearance IDs from Gate 4 were removed.
+
+The learner now receives only:
+- noisy local RGB pairs;
+- oracle motion vectors.
+
+Three motion frames produce continuous pair examples. Same non-zero motion is a
+positive affinity target; differential motion is negative evidence; two
+stationary pixels are ignored. A nearest-pair radius is calibrated solely from
+leave-one-out distances among the training examples.
+
+At test time the objects stop at new positions with fresh RGB noise. Affinities
+are thresholded locally and connected components are measured.
+
+Across 12 unseen static scenes:
+
+| operator | median ARI | median components | mean object fragmentation |
+|---|---:|---:|---:|
+| static RGB affinity | 0.48112 | 3 | 2.0 |
+| **coherent common-fate memory** | **0.99660** | **3** | **1.0** |
+| part-split motion | 0.94871 | 5 | 2.0 |
+
+The coherent condition's minimum ARI over the 12 scenes is **0.89702**; every
+true object remains a single connected component in every scene.
+
+The attacker is revealing: part-split motion still reaches high ARI because it
+learns foreground/background boundaries, but each true object remains split
+into two pieces. Therefore ARI alone would have let us overclaim.
+
+New boundary:
+
+[
+\boxed{\text{foreground separation} \neq \text{object binding}}
+]
+
+For this lineage, object binding now means at least both:
+1. high agreement with ownership labels; and
+2. low fragmentation of each true object.
+
+Gate 5 is still synthetic and still uses oracle motion, but the persistent
+operator write now works in continuous noisy appearance space rather than a
+hand-coded feature-ID table.
+
 ## Next attacker
 
 Remove the scaffolding in order:

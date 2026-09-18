@@ -206,6 +206,47 @@ What it does establish is the mechanism we wanted to isolate:
 That is the first place in this repo where history changes what a future image
 means.
 
+## Gate 5 — continuous RGB-pair common fate
+
+`gate5_continuous_common_fate.py` removes the discrete feature-ID table from
+Gate 4. The learner receives only noisy continuous RGB pairs plus oracle motion.
+
+Three motion frames generate local pair examples:
+
+```text
+same non-zero motion                    target affinity 1
+different motion / moving vs stationary target affinity 0
+stationary vs stationary                 no evidence
+```
+
+At test time the objects are stopped at new coordinates with fresh RGB noise.
+A pair can override ordinary appearance affinity only if it lies within a
+nearest-pair radius calibrated entirely from the training examples.
+
+The readout is deliberately local: threshold affinity at 0.5 and take connected
+components. This exposes a subtle failure that ARI alone hides.
+
+Across 12 unseen noisy static scenes:
+
+| operator | median ARI | median components | object fragmentation |
+|---|---:|---:|---:|
+| static RGB affinity | 0.481 | 3 | 2.0 |
+| **coherent common-fate memory** | **0.997** | **3** | **1.0** |
+| part-split motion | 0.949 | 5 | 2.0 |
+
+The part-split attacker is the interesting one. It learns that moving foreground
+differs from stationary background, so ARI becomes deceptively high, but every
+true object remains split into its two appearance parts. Only coherent common
+fate binds those parts into one connected object.
+
+So Gate 5 adds another measurement rule:
+
+> **foreground separation is not object binding; always measure fragmentation.**
+
+The continuous memory is still intentionally primitive: nearest RGB-pair
+examples, oracle motion, and synthetic colours. But the discrete type lookup is
+gone.
+
 ## Current picture
 
 ```text
