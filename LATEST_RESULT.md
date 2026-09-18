@@ -202,6 +202,47 @@ The remaining scaffold is now narrower and clearer:
 The next question is whether the appearance-region presegmentation can be
 weakened without reintroducing boundary-motion hallucinations.
 
+## Gate 7: occlusion reaches the instance-binding wall
+
+The learned common-fate operator from Gate 6 was still local. Gate 7 inserts a
+one-pixel background occluder through each two-part object and adds a novel
+distractor at the same short gap.
+
+Three mechanisms are compared on six scenes:
+
+| mechanism | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local common-fate memory | 0.97992 | 6 | 1.667 | 0 / 6 |
+| region-relation gap bridge | **1.00000** | **4** | **1.000** | **2 / 6** |
+| proximity-only gap bridge | 0.94467 | 2 | 1.000 | 6 / 6 |
+
+The local operator cannot reconnect visible islands once direct contact is
+removed. A nonlocal relation bridge fixes fragmentation, and it rejects the
+novel distractor better than proximity alone.
+
+However, the stronger per-scene attacker exposes a deeper failure: in two
+layouts the two *real* objects come close diagonally. Their visible parts
+satisfy a genuinely learned common-fate relation, so the generic region rule
+can connect the wrong instances.
+
+An earlier implementation allowed one pixel match to authorize the nonlocal
+edge. Replacing that with whole-region mean descriptors removed the accidental
+pixel-level failure but **did not remove these two instance collisions**. That
+is evidence that the remaining problem is not a noisy descriptor threshold.
+
+Boundary:
+
+[
+\boxed{\text{correct feature relation} \neq \text{correct instance binding}}
+]
+
+A generic operator can know that red+green or red+blue parts compose objects
+and still not know *which red belongs to which green/blue right now*.
+
+This sharply motivates the next variable: an instance-specific persistent
+address—phase, oscillator orientation, slot identity, track state, or an
+equivalent dynamical code.
+
 ## Next attacker
 
 Remove the scaffolding in order:
