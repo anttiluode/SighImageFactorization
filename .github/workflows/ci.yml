@@ -23,4 +23,4 @@ jobs:
       - run: python gate3_same_graph_binding.py --seeds 3
       - run: python gate4_common_fate_write.py
       - run: python gate5_continuous_common_fate.py --samples 6
-      - run: python gate6_estimated_motion_write.py --test-scenes 6
+      - run: python gate6_estimated_motion.py --seeds 4 --tests-per-seed 3
