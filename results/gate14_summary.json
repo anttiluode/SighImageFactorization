@@ -1,0 +1,60 @@
+{
+  "gate": 14,
+  "title": "RGB-derived predictive relation admission",
+  "ci_reference": {
+    "train_trials": 120,
+    "test_trials": 200,
+    "history_steps": 4,
+    "contact_steps": 32,
+    "accidental_same_motion_probability": 0.5,
+    "sensor_noise": 0.006,
+    "learned_rgb_threshold": 0,
+    "training_rgb_cue": {
+      "balanced_error": 0.008333333333333333,
+      "false_negative_rate": 0,
+      "false_positive_rate": 0.016666666666666666
+    },
+    "held_out_rgb_cue": {
+      "accuracy": 0.975,
+      "balanced_error": 0.025,
+      "false_negative_rate": 0,
+      "false_positive_rate": 0.05,
+      "genuine_prediction_rate": 1,
+      "accidental_prediction_rate": 0.05,
+      "median_genuine_residual": 0,
+      "median_accidental_residual": 0.75
+    },
+    "held_out_oracle_cue": {
+      "accuracy": 0.975,
+      "balanced_error": 0.025
+    },
+    "estimator_receipt": {
+      "mean_confidence": 0.9959812982126067,
+      "median_confidence": 0.9960191834468052,
+      "mean_valid_fraction": 1
+    },
+    "policies": {
+      "age_only_tau64": {
+        "genuine_merge_fraction": 0,
+        "accidental_false_merge_fraction": 0,
+        "balanced_relation_accuracy": 0.5
+      },
+      "always_fast_tau16": {
+        "genuine_merge_fraction": 0.77,
+        "accidental_false_merge_fraction": 0.78,
+        "balanced_relation_accuracy": 0.495
+      },
+      "rgb_predictive_fast_or_cautious": {
+        "genuine_merge_fraction": 0.77,
+        "accidental_false_merge_fraction": 0.03,
+        "balanced_relation_accuracy": 0.87
+      },
+      "shuffled_rgb_cue": {
+        "genuine_merge_fraction": 0.42,
+        "accidental_false_merge_fraction": 0.41,
+        "balanced_relation_accuracy": 0.505
+      }
+    }
+  },
+  "boundary": "In the controlled image world, RGB-derived motion history reaches the oracle common-fate cue and selectively enables fast relation admission under matched contact duration. Remaining errors are observational ambiguity; the next boundary is track uncertainty under appearance ambiguity and occlusion."
+}
