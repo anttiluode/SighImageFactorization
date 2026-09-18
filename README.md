@@ -362,7 +362,7 @@ python gate2_frame_geometry.py
 python gate3_same_graph_binding.py
 python gate4_common_fate_write.py
 python gate5_continuous_common_fate.py --samples 6
-python gate6_estimated_motion_write.py --test-scenes 6
+python gate6_estimated_motion.py --seeds 20 --tests-per-seed 5
 ```
 
 No SciPy or scikit-learn is required.
