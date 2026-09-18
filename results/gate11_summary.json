@@ -1,0 +1,47 @@
+{
+  "trials": 5000,
+  "dimension": 8,
+  "address_collision_cosine_threshold": 0.99,
+  "gamma": 0.2,
+  "persistence_tau": 64.0,
+  "pre_sync_steps": 240,
+  "post_separation_steps": 120,
+  "pre_contact": {
+    "minimum_internal_edge_cosine": 0.9999999999999998,
+    "median_cross_instance_cosine": 0.000004584964519313561,
+    "maximum_cross_instance_cosine": 0.9255951675039544,
+    "collision_fraction": 0.0
+  },
+  "collision_fraction_by_contact_steps": {
+    "8": {
+      "instantaneous": 0.0004,
+      "persistence_gated": 0.0
+    },
+    "16": {
+      "instantaneous": 0.1302,
+      "persistence_gated": 0.0
+    },
+    "32": {
+      "instantaneous": 1.0,
+      "persistence_gated": 0.0008
+    },
+    "64": {
+      "instantaneous": 1.0,
+      "persistence_gated": 0.9998
+    },
+    "128": {
+      "instantaneous": 1.0,
+      "persistence_gated": 1.0
+    }
+  },
+  "median_cross_instance_cosine_at_32_steps": {
+    "instantaneous": 0.9996119633920832,
+    "persistence_gated": 0.8661350916572341
+  },
+  "persistence_gated_edge_weight_at_32_steps": 0.39585885403830723,
+  "after_32_step_contact_then_120_separation_steps": {
+    "instantaneous_collision_fraction": 1.0,
+    "persistence_gated_collision_fraction": 0.0008
+  },
+  "interpretation": "Gate 10 local addresses are vulnerable to temporary same-motion contact if new edges get full strength immediately. A slow edge-eligibility state protects established instance identity against transient contact, while sufficiently persistent contact still eventually merges the addresses."
+}
