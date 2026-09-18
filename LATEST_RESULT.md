@@ -151,6 +151,57 @@ Gate 5 is still synthetic and still uses oracle motion, but the persistent
 operator write now works in continuous noisy appearance space rather than a
 hand-coded feature-ID table.
 
+## Gate 6: oracle motion removed
+
+Gate 6 receives only frame (t) and frame (t+1).
+
+Each frame is first split into local appearance-coherent connected regions.
+For every region, RGB template matching searches a small displacement window in
+the next frame. Only confident non-zero translations are allowed to write
+persistent cross-appearance affinity.
+
+The estimator was evaluated against ground truth **without exposing that ground
+truth to the learner**.
+
+GitHub Actions measured:
+
+```text
+moving-component translation accuracy     1.000
+moving-component median confidence        0.995734
+background median confidence              0.037952
+time-shuffled median confidence           0.001830
+estimated boundary-pair writes            48
+time-shuffled writes                       0
+```
+
+Six later static scenes at unseen positions:
+
+| condition | median ARI | components | object fragmentation |
+|---|---:|---:|---:|
+| static appearance | 0.97368 | 5 | 2.0 |
+| oracle motion | **1.00000** | **3** | **1.0** |
+| **RGB-estimated motion** | **1.00000** | **3** | **1.0** |
+| time-shuffled frames | 0.97368 | 5 | 2.0 |
+
+Thus the Gate-5 mechanism no longer requires an externally supplied velocity
+field in this controlled setting. The moving image pair itself supplies enough
+evidence to rewrite the later static grouping operator.
+
+The remaining scaffold is now narrower and clearer:
+
+[
+\boxed{
+\text{appearance regions}
+\rightarrow
+\text{estimated common motion}
+\rightarrow
+\text{persistent relation}
+}
+]
+
+The next question is whether the appearance-region presegmentation can be
+weakened without reintroducing boundary-motion hallucinations.
+
 ## Next attacker
 
 Remove the scaffolding in order:

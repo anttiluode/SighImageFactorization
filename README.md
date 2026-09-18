@@ -247,6 +247,48 @@ The continuous memory is still intentionally primitive: nearest RGB-pair
 examples, oracle motion, and synthetic colours. But the discrete type lookup is
 gone.
 
+## Gate 6 — RGB-only motion write
+
+`gate6_estimated_motion_write.py` removes the oracle motion vectors from Gate 5.
+
+The learner receives only consecutive RGB frames. It first forms local
+appearance-coherent connected regions, then estimates one small translation per
+region by template matching into the next frame. Two adjacent appearance
+regions write a persistent affinity only when both translations are confident,
+non-zero, and equal.
+
+This keeps the remaining scaffold explicit: **appearance-region decomposition
+still comes before motion estimation**. We have removed oracle motion, not yet
+solved dense optical flow.
+
+GitHub Actions result:
+
+```text
+moving component motion accuracy          1.000
+moving component median confidence        0.9957
+background component median confidence    0.0380
+time-shuffled median confidence           0.00183
+estimated-motion training examples        48
+time-shuffled training examples           0
+```
+
+On later static scenes at new positions:
+
+| operator | median ARI | median components | object fragmentation |
+|---|---:|---:|---:|
+| static appearance | 0.974 | 5 | 2.0 |
+| oracle motion | **1.000** | **3** | **1.0** |
+| **RGB-estimated motion** | **1.000** | **3** | **1.0** |
+| time-shuffled frames | 0.974 | 5 | 2.0 |
+
+So in this controlled world, the true motion vector is no longer needed. The
+system can infer which appearance regions move together from the frames
+themselves, write that relation into the operator, and reuse it after the
+motion evidence is gone.
+
+The time-shuffled attacker is important: unrelated frame pairs do not merely
+produce a worse write; the confidence gate refuses to write anything at all.
+
 ## Current picture
 
 ```text

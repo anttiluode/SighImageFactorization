@@ -1,0 +1,42 @@
+{
+  "training_episodes": 3,
+  "test_scenes_ci": 6,
+  "estimated_training_examples": 48,
+  "oracle_training_examples": 240,
+  "time_shuffled_training_examples": 0,
+  "moving_component_motion_accuracy": 1.0,
+  "moving_component_median_confidence": 0.995733950168568,
+  "background_component_median_confidence": 0.0379522703325795,
+  "time_shuffled_component_median_confidence": 0.0018303011550465185,
+  "summary": {
+    "static": {
+      "median_ari": 0.9736822030665955,
+      "min_ari": 0.9736822030665955,
+      "median_component_count": 5.0,
+      "median_object_fragmentation": 2.0,
+      "max_object_fragmentation": 2.0
+    },
+    "oracle_motion": {
+      "median_ari": 1.0,
+      "min_ari": 1.0,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "max_object_fragmentation": 1.0
+    },
+    "estimated_motion": {
+      "median_ari": 1.0,
+      "min_ari": 1.0,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "max_object_fragmentation": 1.0
+    },
+    "time_shuffled": {
+      "median_ari": 0.9736822030665955,
+      "min_ari": 0.9736822030665955,
+      "median_component_count": 5.0,
+      "median_object_fragmentation": 2.0,
+      "max_object_fragmentation": 2.0
+    }
+  },
+  "interpretation": "Consecutive RGB frames are sufficient to estimate the rigid motion of appearance-coherent regions in this controlled world. The estimated common-fate write matches the oracle upper bound and transfers after the object stops at new positions. Time-shuffled frames are rejected by low correspondence confidence."
+}
