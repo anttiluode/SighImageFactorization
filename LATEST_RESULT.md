@@ -295,6 +295,60 @@ track, persistent vector, or another address could substitute. It establishes
 that generic learned relations need an instance-specific persistent variable
 when several compatible instances coexist.
 
+## Gate 9: phase address emerges from local oscillator dynamics
+
+Gate 8 still contained an external enumerator: common-fate groups were found
+first, then each group was simply assigned a different phase.
+
+Gate 9 removes that assignment. Every moving appearance component starts with a
+random phase. The only phase dynamics are:
+
+[
+\dot\theta_i = \sum_j J_{ij}\sin(\theta_j-\theta_i)
+]
+
+with (J_{ij}=+1) for adjacent components sharing the same non-zero motion and
+(J_{ij}=-0.2) for other moving-component pairs.
+
+The two objects have the **same velocity**, so velocity cannot carry identity.
+
+Six-scene CI receipt:
+
+```text
+minimum attractive-edge cosine       1.000000
+maximum repulsive-edge cosine       -1.000000
+moving component count               4
+```
+
+| condition | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.97992 | 6 | 1.667 | 0 / 6 |
+| relation only | 0.95829 | 3 | 1.000 | **6 / 6** |
+| frozen random phase | 0.97992 | 6 | 1.667 | 0 / 6 |
+| **emergent phase** | **1.00000** | **4** | **1.000** | **0 / 6** |
+| collapsed initial phase | 0.95829 | 3 | 1.000 | **6 / 6** |
+| reset phase | 0.97992 | 6 | 1.667 | 0 / 6 |
+
+This closes the main cheat in Gate 8.
+
+- Persisting **random unsynchronized** phase does not bind the two parts.
+- Letting local attractive coupling synchronize the parts produces a shared
+  within-object address.
+- Weak repulsion pushes the two disconnected instances to opposite phase.
+- Erasing that state after motion restores fragmentation.
+- Starting in exact collapsed symmetry leaves the dynamics at that symmetry
+  fixed point and restores cross-binding.
+
+The useful claim is therefore narrower and stronger:
+
+[
+\boxed{
+\text{local dynamics can generate a persistent instance address}
+}
+]
+
+rather than merely “a phase variable can store an externally assigned ID.”
+
 ## Next attacker
 
 Remove the scaffolding in order:
