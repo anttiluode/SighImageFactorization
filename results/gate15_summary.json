@@ -1,0 +1,87 @@
+{
+  "gate": 15,
+  "title": "track confidence vetoes spurious common-fate evidence",
+  "ci_reference": {
+    "train_trials": 80,
+    "test_trials": 120,
+    "history_observations": 4,
+    "contact_steps": 32,
+    "appearance_jump": 0.15,
+    "occlusion_columns": 1,
+    "lookalike_blend": 0.5,
+    "learned_residual_threshold": 0,
+    "learned_confidence_threshold": 0.596746564930118,
+    "training": {
+      "residual_only": {
+        "balanced_error": 0.4625,
+        "false_negative_rate": 0,
+        "false_positive_rate": 0.925
+      },
+      "confidence_gated": {
+        "balanced_error": 0.0375,
+        "false_negative_rate": 0,
+        "false_positive_rate": 0.075
+      }
+    },
+    "held_out_cues": {
+      "residual_only_rgb": {
+        "accuracy": 0.5166666666666667,
+        "balanced_error": 0.48333333333333334,
+        "false_negative_rate": 0,
+        "false_positive_rate": 0.9666666666666667
+      },
+      "confidence_gated_rgb": {
+        "accuracy": 0.925,
+        "balanced_error": 0.075,
+        "false_negative_rate": 0.05,
+        "false_positive_rate": 0.1
+      },
+      "oracle_motion": {
+        "accuracy": 0.975,
+        "balanced_error": 0.025,
+        "false_negative_rate": 0,
+        "false_positive_rate": 0.05
+      },
+      "shuffled_confidence": {
+        "accuracy": 0.6,
+        "balanced_error": 0.4
+      }
+    },
+    "tracker_receipt": {
+      "median_min_confidence_genuine": 0.649247824140184,
+      "median_min_confidence_accidental": 0.3221681004510518,
+      "mean_motion_accuracy_genuine": 1,
+      "mean_motion_accuracy_accidental": 0.5583333333333333,
+      "median_rgb_residual_genuine": 0,
+      "median_rgb_residual_accidental": 0
+    },
+    "policies": {
+      "global_cautious_tau96": {
+        "genuine_merge_fraction": 0,
+        "accidental_false_merge_fraction": 0,
+        "balanced_relation_accuracy": 0.5
+      },
+      "always_fast_tau16": {
+        "genuine_merge_fraction": 0.85,
+        "accidental_false_merge_fraction": 0.7666666666666667,
+        "balanced_relation_accuracy": 0.5416666666666666
+      },
+      "residual_only_fast_or_cautious": {
+        "genuine_merge_fraction": 0.85,
+        "accidental_false_merge_fraction": 0.7333333333333333,
+        "balanced_relation_accuracy": 0.5583333333333333
+      },
+      "confidence_gated_fast_or_cautious": {
+        "genuine_merge_fraction": 0.8,
+        "accidental_false_merge_fraction": 0.05,
+        "balanced_relation_accuracy": 0.875
+      },
+      "shuffled_confidence": {
+        "genuine_merge_fraction": 0.5333333333333333,
+        "accidental_false_merge_fraction": 0.31666666666666665,
+        "balanced_relation_accuracy": 0.6083333333333334
+      }
+    }
+  },
+  "boundary": "Under an adversarial look-alike correspondence, RGB motion disagreement alone can falsely report common fate. Local track confidence can veto that evidence and preserve fast binding on reliable relations without globally slowing the system. The next boundary is recoverable uncertainty over time."
+}
