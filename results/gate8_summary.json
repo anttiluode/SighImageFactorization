@@ -1,0 +1,38 @@
+{
+  "scenes": 6,
+  "median_discovered_group_count": 2.0,
+  "summary": {
+    "local_memory": {
+      "median_ari": 0.9799243701733211,
+      "median_component_count": 6.0,
+      "median_object_fragmentation": 1.6666666666666667,
+      "collision_scenes": 0
+    },
+    "relation_only": {
+      "median_ari": 0.9582862159272024,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 6
+    },
+    "persistent_phase": {
+      "median_ari": 1.0,
+      "median_component_count": 4.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 0
+    },
+    "collapsed_phase": {
+      "median_ari": 0.9582862159272024,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 6
+    },
+    "reset_phase": {
+      "median_ari": 0.9799243701733211,
+      "median_component_count": 6.0,
+      "median_object_fragmentation": 1.6666666666666667,
+      "fragmented_scenes": 6
+    }
+  },
+  "attacker": "Both object instances move with the same velocity and share the same generic learned part relations.",
+  "boundary": "A persistent instance-specific address resolves the ambiguity left by generic feature relations. In this controlled gate a 2-D phase-like unit vector is sufficient; collapsing it recreates cross-binding and resetting it recreates fragmentation."
+}
