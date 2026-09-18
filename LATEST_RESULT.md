@@ -151,68 +151,89 @@ Gate 5 is still synthetic and still uses oracle motion, but the persistent
 operator write now works in continuous noisy appearance space rather than a
 hand-coded feature-ID table.
 
-## Gate 6: oracle motion removed
+## Gate 6: oracle motion removed with one RGB pair
 
-Gate 6 receives only frame (t) and frame (t+1).
+Gate 6 now runs a stricter protocol than the interrupted prototype.
 
-The estimator searches a local +/-2 pixel displacement window. A plain patch
-matcher was explicitly attacked and rejected because motion boundaries can
-drag stationary background with the object. The accepted estimator is
-**center-anchored**: center RGB dominates the correspondence cost and a 3x3
-patch contributes only a small tie-break term. Forward/backward consistency
-and confidence thresholds reject unstable matches.
-
-No true motion enters the learner. Ground-truth flow is used only to score the
-estimator and to build an oracle upper-bound memory.
-
-Measured training correspondence quality:
+Each independent run gets exactly:
 
 ```text
-episode 0 foreground exact displacement   0.9643
-episode 1 foreground exact displacement   1.0000
-episode 2 foreground exact displacement   0.9908
-
-episode 0 background zero displacement    0.9824
-episode 1 background zero displacement    0.9877
-episode 2 background zero displacement    0.9941
-
-estimated binding examples                42
-oracle binding examples                   48
-time-shuffled binding examples             0
+RGB_t
+RGB_t+1
 ```
 
-Twelve later static scenes use new coordinates, new object texture and fresh
-sensor noise:
+No flow, part ID or object label enters the learner.
 
-| condition | median ARI | min ARI | components | fragmentation |
-|---|---:|---:|---:|---:|
-| static appearance | 0.94871 | 0.94871 | 5 | 2.0 |
-| oracle-flow memory | **1.00000** | 0.89702 | **3** | **1.0** |
-| **estimated-flow memory** | **1.00000** | 0.89702 | **3** | **1.0** |
-| time-shuffled frames | 0.94871 | 0.94871 | 5 | 2.0 |
+A local +/-2 correspondence search uses a 5x5 patch plus strong center-colour
+anchoring. Forward/backward consistency, confidence and photometric-cost gates
+reject unstable matches.
 
-The estimated-flow result matches the oracle upper bound at this level of
-measurement. Time-shuffling destroys the temporal evidence completely: no
-binding examples survive the correspondence gates.
+At unlike-appearance boundaries, estimated motion writes both positive and
+negative continuous pair evidence:
 
-Thus the Gate-5 mechanism no longer requires an externally supplied motion
-field in this controlled setting:
+```text
+same confident non-zero motion       -> future affinity
+different / moving-vs-static motion  -> future separation
+```
+
+Ground-truth flow is used only for measurement and an oracle upper bound.
+
+### 20 independent two-frame runs
+
+Each learned memory is tested after the objects stop at five new coordinate
+arrangements.
+
+Motion estimation:
+
+```text
+median accepted moving-pixel coverage     0.84375
+median accepted moving-pixel accuracy     1.00000
+```
+
+Run-level median grouping:
+
+| condition | median ARI | min run-median ARI | exact runs | components | fragmentation |
+|---|---:|---:|---:|---:|---:|
+| static appearance | 0.48112 | 0.48112 | 0% | 3 | 2.0 |
+| **estimated motion** | **1.00000** | 0.55867 | **90%** | **3** | **1.0** |
+| oracle motion | **1.00000** | **1.00000** | **100%** | **3** | **1.0** |
+| time-shuffled frames | 0.48112 | 0.48112 | 0% | 3 | 2.0 |
+
+Across all 100 later static scenes:
+
+```text
+estimated-flow exact partition       84%
+oracle-flow exact partition          97%
+```
+
+Time-shuffling produced no accepted pair-memory examples in these runs and
+therefore falls back to the static fragmented result.
+
+### Boundary established
+
+The externally supplied velocity field is no longer necessary for the
+controlled mechanism:
 
 [
 \boxed{
-\text{RGB}_t,\text{RGB}_{t+1}
+(\mathrm{RGB}_t,\mathrm{RGB}_{t+1})
 \rightarrow
-\text{estimated common fate}
+\widehat{\mathrm{motion}}
 \rightarrow
-\text{persistent relation}
+\Delta \mathcal O
 \rightarrow
-\text{future static grouping}
+\text{later static binding}
 }
 ]
 
-The remaining scaffolding is now narrower: tiny translations, synthetic
-colours/textures, no occlusion, and a hand-coded common-fate-to-affinity write
-rule.
+The oracle gap is now useful rather than embarrassing: it localizes the
+remaining failures to correspondence / continuous pair memory. The common-fate
+write itself still has a perfect run-level upper bound.
+
+The remaining conceptual weakness is **instance ambiguity**. A learned generic
+relation such as red<->blue can say those features often belong together, but
+cannot yet say *which red belongs to which blue* when several compatible
+instances coexist.
 
 ## Next attacker
 
