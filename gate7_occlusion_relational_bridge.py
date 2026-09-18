@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
-"""Gate 7: occlusion exposes the locality limit, relational memory bridges it.
+"""Gate 7: occlusion exposes the locality limit, region relations bridge it.
 
-Gates 4--6 learned that two unlike appearance regions belong together because
-they moved together.  But the learned operator was still local: it could only
-change an edge that already existed between neighbouring pixels.
+Gates 4--6 learned that unlike appearance regions can belong together because
+they move together.  But the learned operator was still local: it only changed
+edges between neighbouring pixels.
 
 This gate removes that contact at test time.  A one-pixel background occluder
-cuts each two-part object into two visible islands.  A separate distractor
-component is placed at the same short spatial gap from one object.
+cuts each two-part object into two visible islands.  A novel distractor is
+placed at the same short spatial gap from one object.
+
+Two memory scales are kept deliberately separate:
+
+* local edge memory: noisy RGB boundary-pixel pairs, as in Gate 6;
+* object relation memory: mean RGB descriptors of whole appearance regions
+  that moved together.
+
+The second distinction matters.  An earlier version of this gate allowed one
+lucky pixel match to authorize a nonlocal edge; one test scene produced a false
+bridge.  Nonlocal identity now requires region-level evidence.
 
 We compare:
   * local learned affinity only;
   * relation-specific short-range bridge edges;
   * proximity-only short-range bridge edges.
 
-The relation-specific bridge may cross a one-pixel gap only when the two RGB
-endpoints match a positively learned common-fate pair.  The proximity attacker
-bridges every non-adjacent component at the same geometric range.
-
-This is still synthetic and deliberately small.  The point is to isolate the
-topological failure of a purely local grouping operator and the minimum extra
-mechanism needed to express remembered identity across missing evidence.
+The kill condition is per-scene, not median: relational bridging must repair
+every object without a single cross-object collision.
 """
 from __future__ import annotations
 
@@ -50,21 +55,53 @@ from gate6_estimated_motion_write import (
 CLUTTER_RGB = np.array([0.82, 0.78, 0.12], dtype=np.float64)
 
 
-def train_estimated_common_fate_memory():
+def direct_adjacencies(component_map: np.ndarray) -> set[tuple[int, int]]:
+    n = component_map.shape[0]
+    out: set[tuple[int, int]] = set()
+    for y in range(n):
+        for x in range(n):
+            a = int(component_map[y, x])
+            for dy, dx in ((1, 0), (0, 1)):
+                yy, xx = y + dy, x + dx
+                if yy >= n or xx >= n:
+                    continue
+                b = int(component_map[yy, xx])
+                if a != b:
+                    out.add(tuple(sorted((a, b))))
+    return out
+
+
+def component_means(
+    image: np.ndarray,
+    component_map: np.ndarray,
+) -> dict[int, np.ndarray]:
+    return {
+        int(comp): image[component_map == comp].mean(axis=0)
+        for comp in np.unique(component_map)
+    }
+
+
+def train_estimated_common_fate_memories():
+    """Train both local pixel-edge and region-relation memories from RGB video."""
     training = (
         ((3, 2), (13, 14), (3, 3), (13, 13)),
         ((3, 3), (13, 13), (3, 4), (13, 12)),
         ((3, 4), (13, 12), (3, 5), (13, 11)),
     )
-    examples = []
+
+    local_examples = []
+    relation_examples = []
+
     for episode, (p1, p2, q1, q2) in enumerate(training):
         frame0, _, _ = render_scene(p1, p2, seed=2 * episode)
         frame1, _, _ = render_scene(q1, q2, seed=2 * episode + 1)
+
         components = appearance_components(frame0)
         motions, confidences = estimate_component_translations(
             frame0, frame1, components
         )
-        examples.extend(
+
+        local_examples.extend(
             collect_boundary_examples_from_component_motion(
                 frame0,
                 components,
@@ -72,9 +109,37 @@ def train_estimated_common_fate_memory():
                 confidences,
             )
         )
-    if not examples:
-        raise RuntimeError("expected positive common-fate examples")
-    return examples, prepare_memory(examples), calibrate_radius(examples)
+
+        means = component_means(frame0, components)
+        for ca, cb in direct_adjacencies(components):
+            if confidences[ca] < 0.50 or confidences[cb] < 0.50:
+                continue
+            va = np.asarray(motions[ca], dtype=np.float64)
+            vb = np.asarray(motions[cb], dtype=np.float64)
+            if np.linalg.norm(va) < 1e-12 or np.linalg.norm(vb) < 1e-12:
+                continue
+            if np.linalg.norm(va - vb) < 0.1:
+                relation_examples.append(
+                    (
+                        means[ca].copy(),
+                        means[cb].copy(),
+                        1.0,
+                    )
+                )
+
+    if not local_examples:
+        raise RuntimeError("expected local common-fate examples")
+    if len(relation_examples) < 2:
+        raise RuntimeError("expected repeated region relation examples")
+
+    return {
+        "local_examples": local_examples,
+        "local_memory": prepare_memory(local_examples),
+        "local_radius": calibrate_radius(local_examples),
+        "relation_examples": relation_examples,
+        "relation_memory": prepare_memory(relation_examples),
+        "relation_radius": calibrate_radius(relation_examples),
+    }
 
 
 def make_occluded_clutter_scene(
@@ -97,9 +162,8 @@ def make_occluded_clutter_scene(
         )
         labels[row, x : x + size] = 0
 
-    # A novel distractor sits exactly one missing pixel away from object 1.
-    # Proximity alone will be tempted to bridge it; the learned RGB relation
-    # has never seen this colour pair.
+    # Novel distractor: same geometric gap as the occluded object relation, but
+    # an appearance relation never observed during common motion.
     y1, x1 = pos1
     cy = y1
     cx = x1 + size + 1
@@ -110,22 +174,6 @@ def make_occluded_clutter_scene(
     labels[cy : cy + 3, cx : cx + 3] = 3
 
     return np.clip(image, 0.0, 1.0), labels
-
-
-def direct_adjacencies(component_map: np.ndarray) -> set[tuple[int, int]]:
-    n = component_map.shape[0]
-    out: set[tuple[int, int]] = set()
-    for y in range(n):
-        for x in range(n):
-            a = int(component_map[y, x])
-            for dy, dx in ((1, 0), (0, 1)):
-                yy, xx = y + dy, x + dx
-                if yy >= n or xx >= n:
-                    continue
-                b = int(component_map[yy, xx])
-                if a != b:
-                    out.add(tuple(sorted((a, b))))
-    return out
 
 
 def positive_memory_match(
@@ -149,25 +197,17 @@ def positive_memory_match(
     )
 
 
-def add_gap_bridges(
-    w: np.ndarray,
-    image: np.ndarray,
+def candidate_gap_pairs(
     component_map: np.ndarray,
-    mode: str,
-    memory: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
-    radius: float | None = None,
-) -> tuple[np.ndarray, int]:
-    """Add Manhattan-distance-2 edges between non-adjacent components."""
-    if mode not in {"relational", "proximity"}:
-        raise ValueError("mode must be relational or proximity")
-    if mode == "relational" and (memory is None or radius is None):
-        raise ValueError("relational mode requires memory and radius")
-
-    out = w.copy()
+) -> dict[tuple[int, int], tuple[int, int]]:
+    """Return one pixel-index bridge for every non-adjacent component pair at L1=2."""
     n = component_map.shape[0]
     direct = direct_adjacencies(component_map)
-    offsets = ((2, 0), (-2, 0), (0, 2), (0, -2), (1, 1), (1, -1), (-1, 1), (-1, -1))
-    added_pairs: set[tuple[int, int]] = set()
+    offsets = (
+        (2, 0), (-2, 0), (0, 2), (0, -2),
+        (1, 1), (1, -1), (-1, 1), (-1, -1),
+    )
+    candidates: dict[tuple[int, int], tuple[int, int]] = {}
 
     for y in range(n):
         for x in range(n):
@@ -186,24 +226,48 @@ def add_gap_bridges(
 
                 pair = tuple(sorted((ca, cb)))
                 if pair in direct:
-                    # Do not "jump over" an ordinary appearance boundary.
-                    # A gap bridge is only for components with no direct contact.
+                    # Ordinary appearance boundaries are not occlusion gaps.
                     continue
+                candidates.setdefault(pair, (i, j))
 
-                allow = mode == "proximity"
-                if mode == "relational":
-                    allow = positive_memory_match(
-                        image[y, x],
-                        image[yy, xx],
-                        memory,
-                        radius,
-                    )
+    return candidates
 
-                if allow:
-                    out[i, j] = out[j, i] = 1.0
-                    added_pairs.add(pair)
 
-    return out, len(added_pairs)
+def add_gap_bridges(
+    w: np.ndarray,
+    image: np.ndarray,
+    component_map: np.ndarray,
+    mode: str,
+    relation_memory: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
+    relation_radius: float | None = None,
+) -> tuple[np.ndarray, int]:
+    if mode not in {"relational", "proximity"}:
+        raise ValueError("mode must be relational or proximity")
+    if mode == "relational" and (
+        relation_memory is None or relation_radius is None
+    ):
+        raise ValueError("relational mode requires region relation memory")
+
+    out = w.copy()
+    candidates = candidate_gap_pairs(component_map)
+    means = component_means(image, component_map)
+    added = 0
+
+    for (ca, cb), (i, j) in candidates.items():
+        allow = mode == "proximity"
+        if mode == "relational":
+            allow = positive_memory_match(
+                means[ca],
+                means[cb],
+                relation_memory,
+                relation_radius,
+            )
+
+        if allow:
+            out[i, j] = out[j, i] = 1.0
+            added += 1
+
+    return out, added
 
 
 def collision_metrics(
@@ -232,11 +296,13 @@ def collision_metrics(
 def evaluate(
     image: np.ndarray,
     truth: np.ndarray,
-    memory,
-    radius,
+    local_memory,
+    local_radius,
     bridge_mode: str | None,
+    relation_memory=None,
+    relation_radius=None,
 ) -> dict:
-    local_w = build_affinity(image, memory, radius)
+    local_w = build_affinity(image, local_memory, local_radius)
     local_components = threshold_components(
         local_w, threshold=0.5
     ).reshape(image.shape[:2])
@@ -249,8 +315,8 @@ def evaluate(
             image,
             local_components,
             bridge_mode,
-            memory,
-            radius,
+            relation_memory,
+            relation_radius,
         )
 
     predicted = threshold_components(w, threshold=0.5)
@@ -272,7 +338,7 @@ def main() -> None:
     parser.add_argument("--json", type=str, default=None)
     args = parser.parse_args()
 
-    examples, memory, radius = train_estimated_common_fate_memory()
+    memories = train_estimated_common_fate_memories()
 
     positions = (
         ((12, 2), (3, 14)),
@@ -286,17 +352,32 @@ def main() -> None:
         image, truth = make_occluded_clutter_scene(
             p1, p2, seed=200 + sample
         )
+
         rows.append(
             {
                 "sample": sample,
                 "local_memory": evaluate(
-                    image, truth, memory, radius, None
+                    image,
+                    truth,
+                    memories["local_memory"],
+                    memories["local_radius"],
+                    None,
                 ),
                 "relational_gap_bridge": evaluate(
-                    image, truth, memory, radius, "relational"
+                    image,
+                    truth,
+                    memories["local_memory"],
+                    memories["local_radius"],
+                    "relational",
+                    memories["relation_memory"],
+                    memories["relation_radius"],
                 ),
                 "proximity_gap_bridge": evaluate(
-                    image, truth, memory, radius, "proximity"
+                    image,
+                    truth,
+                    memories["local_memory"],
+                    memories["local_radius"],
+                    "proximity",
                 ),
             }
         )
@@ -316,8 +397,12 @@ def main() -> None:
         }
 
     report = {
-        "training_examples": len(examples),
-        "memory_radius": radius,
+        "local_training_examples": len(memories["local_examples"]),
+        "region_relation_training_examples": len(
+            memories["relation_examples"]
+        ),
+        "local_memory_radius": memories["local_radius"],
+        "relation_memory_radius": memories["relation_radius"],
         "scenes": args.scenes,
         "summary": {
             "local_memory": summarize("local_memory"),
@@ -325,28 +410,29 @@ def main() -> None:
             "proximity_gap_bridge": summarize("proximity_gap_bridge"),
         },
         "interpretation": (
-            "Occlusion breaks the contact required by the purely local learned "
-            "operator, so remembered object parts fragment again. A short-range "
-            "nonlocal edge can restore continuity, but proximity alone is unsafe: "
-            "it also merges the nearby distractor. Requiring the gap endpoints to "
-            "match a previously learned common-fate relation restores the object "
-            "without the clutter merge. Persistent identity therefore needs both "
-            "relational memory and a way to express that relation beyond immediate "
-            "pixel adjacency."
+            "Occlusion breaks the contact required by a purely local learned "
+            "operator. Proximity can reconnect the visible islands but also "
+            "merges nearby clutter. Region-level relations learned from common "
+            "motion authorize exactly the nonlocal bridges supported by prior "
+            "history. The earlier single-pixel bridge criterion was unsafe; "
+            "nonlocal identity requires evidence at the abstraction level of "
+            "the edge being created."
         ),
         "rows": rows,
     }
 
     print(json.dumps(report, indent=2))
 
-    rel = report["summary"]["relational_gap_bridge"]
-    local = report["summary"]["local_memory"]
-    prox = report["summary"]["proximity_gap_bridge"]
+    for row in rows:
+        rel = row["relational_gap_bridge"]
+        local = row["local_memory"]
+        prox = row["proximity_gap_bridge"]
 
-    assert rel["mean_object_fragmentation"] <= 1.0
-    assert rel["cross_object_collision_count"] == 0.0
-    assert local["mean_object_fragmentation"] > 1.0
-    assert prox["cross_object_collision_count"] > 0.0
+        assert rel["mean_object_fragmentation"] <= 1.0
+        assert rel["mixed_truth_component_count"] == 0
+        assert rel["cross_object_collision_count"] == 0
+        assert local["mean_object_fragmentation"] > 1.0
+        assert prox["cross_object_collision_count"] > 0
 
     if args.json:
         Path(args.json).write_text(
