@@ -155,104 +155,74 @@ hand-coded feature-ID table.
 
 Gate 6 receives only frame (t) and frame (t+1).
 
-Each frame is first split into local appearance-coherent connected regions.
-For every region, RGB template matching searches a small displacement window in
-the next frame. Only confident non-zero translations are allowed to write
-persistent cross-appearance affinity.
+The estimator searches a local +/-2 pixel displacement window. A plain patch
+matcher was explicitly attacked and rejected because motion boundaries can
+drag stationary background with the object. The accepted estimator is
+**center-anchored**: center RGB dominates the correspondence cost and a 3x3
+patch contributes only a small tie-break term. Forward/backward consistency
+and confidence thresholds reject unstable matches.
 
-The estimator was evaluated against ground truth **without exposing that ground
-truth to the learner**.
+No true motion enters the learner. Ground-truth flow is used only to score the
+estimator and to build an oracle upper-bound memory.
 
-GitHub Actions measured:
+Measured training correspondence quality:
 
 ```text
-moving-component translation accuracy     1.000
-moving-component median confidence        0.995734
-background median confidence              0.037952
-time-shuffled median confidence           0.001830
-estimated boundary-pair writes            48
-time-shuffled writes                       0
+episode 0 foreground exact displacement   0.9643
+episode 1 foreground exact displacement   1.0000
+episode 2 foreground exact displacement   0.9908
+
+episode 0 background zero displacement    0.9824
+episode 1 background zero displacement    0.9877
+episode 2 background zero displacement    0.9941
+
+estimated binding examples                42
+oracle binding examples                   48
+time-shuffled binding examples             0
 ```
 
-Six later static scenes at unseen positions:
+Twelve later static scenes use new coordinates, new object texture and fresh
+sensor noise:
 
-| condition | median ARI | components | object fragmentation |
-|---|---:|---:|---:|
-| static appearance | 0.97368 | 5 | 2.0 |
-| oracle motion | **1.00000** | **3** | **1.0** |
-| **RGB-estimated motion** | **1.00000** | **3** | **1.0** |
-| time-shuffled frames | 0.97368 | 5 | 2.0 |
+| condition | median ARI | min ARI | components | fragmentation |
+|---|---:|---:|---:|---:|
+| static appearance | 0.94871 | 0.94871 | 5 | 2.0 |
+| oracle-flow memory | **1.00000** | 0.89702 | **3** | **1.0** |
+| **estimated-flow memory** | **1.00000** | 0.89702 | **3** | **1.0** |
+| time-shuffled frames | 0.94871 | 0.94871 | 5 | 2.0 |
 
-Thus the Gate-5 mechanism no longer requires an externally supplied velocity
-field in this controlled setting. The moving image pair itself supplies enough
-evidence to rewrite the later static grouping operator.
+The estimated-flow result matches the oracle upper bound at this level of
+measurement. Time-shuffling destroys the temporal evidence completely: no
+binding examples survive the correspondence gates.
 
-The remaining scaffold is now narrower and clearer:
+Thus the Gate-5 mechanism no longer requires an externally supplied motion
+field in this controlled setting:
 
 [
 \boxed{
-\text{appearance regions}
+\text{RGB}_t,\text{RGB}_{t+1}
 \rightarrow
-\text{estimated common motion}
+\text{estimated common fate}
 \rightarrow
 \text{persistent relation}
+\rightarrow
+\text{future static grouping}
 }
 ]
 
-The next question is whether the appearance-region presegmentation can be
-weakened without reintroducing boundary-motion hallucinations.
-
-## Gate 7: occlusion reaches the instance-binding wall
-
-The learned common-fate operator from Gate 6 was still local. Gate 7 inserts a
-one-pixel background occluder through each two-part object and adds a novel
-distractor at the same short gap.
-
-Three mechanisms are compared on six scenes:
-
-| mechanism | median ARI | components | fragmentation | collision scenes |
-|---|---:|---:|---:|---:|
-| local common-fate memory | 0.97992 | 6 | 1.667 | 0 / 6 |
-| region-relation gap bridge | **1.00000** | **4** | **1.000** | **2 / 6** |
-| proximity-only gap bridge | 0.94467 | 2 | 1.000 | 6 / 6 |
-
-The local operator cannot reconnect visible islands once direct contact is
-removed. A nonlocal relation bridge fixes fragmentation, and it rejects the
-novel distractor better than proximity alone.
-
-However, the stronger per-scene attacker exposes a deeper failure: in two
-layouts the two *real* objects come close diagonally. Their visible parts
-satisfy a genuinely learned common-fate relation, so the generic region rule
-can connect the wrong instances.
-
-An earlier implementation allowed one pixel match to authorize the nonlocal
-edge. Replacing that with whole-region mean descriptors removed the accidental
-pixel-level failure but **did not remove these two instance collisions**. That
-is evidence that the remaining problem is not a noisy descriptor threshold.
-
-Boundary:
-
-[
-\boxed{\text{correct feature relation} \neq \text{correct instance binding}}
-]
-
-A generic operator can know that red+green or red+blue parts compose objects
-and still not know *which red belongs to which green/blue right now*.
-
-This sharply motivates the next variable: an instance-specific persistent
-address—phase, oscillator orientation, slot identity, track state, or an
-equivalent dynamical code.
+The remaining scaffolding is now narrower: tiny translations, synthetic
+colours/textures, no occlusion, and a hand-coded common-fate-to-affinity write
+rule.
 
 ## Next attacker
 
-Remove the scaffolding in order:
+The clean next test is occlusion and instance ambiguity, but it must be rebuilt
+on top of this revised dense correspondence gate.
 
-1. continuous RGB/local feature embeddings instead of discrete appearance IDs;
-2. estimated correspondence/flow instead of oracle motion;
-3. occlusion and clutter;
-4. a learned persistent state that writes the affinity without an explicit
-   hand-coded common-fate rule.
+The question is no longer merely whether a learned feature relation survives a
+gap. It is whether a generic relation such as red+blue can identify **which
+instance** of red belongs to which blue when several compatible objects coexist.
 
-The strongest kill condition remains location transfer: a system that only
-remembers where the moving blob was must fail when the same object stops
-somewhere else.
+That motivates the next candidate variable: an instance-specific persistent
+address (phase, oscillator orientation, track state, slot identity, or an
+equivalent dynamical code).
