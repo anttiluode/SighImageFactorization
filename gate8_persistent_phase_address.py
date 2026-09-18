@@ -40,7 +40,6 @@ from gate5_continuous_common_fate import (
 )
 from gate6_estimated_motion_write import (
     appearance_components,
-    estimate_component_translations,
     render_scene,
 )
 from gate7_occlusion_relational_bridge import (
@@ -52,6 +51,95 @@ from gate7_occlusion_relational_bridge import (
     positive_memory_match,
     train_estimated_common_fate_memories,
 )
+
+
+def eroded_component_pixels(
+    component_map: np.ndarray,
+    comp: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Use region interiors so changing ownership at boundaries cannot drive motion."""
+    mask = component_map == comp
+    interior = mask.copy()
+
+    # Four-neighbour erosion. Frame-edge pixels are excluded from the robust
+    # template because part of their neighbourhood is unobserved.
+    interior[0, :] = False
+    interior[-1, :] = False
+    interior[:, 0] = False
+    interior[:, -1] = False
+
+    core = interior.copy()
+    core[1:, :] &= mask[:-1, :]
+    core[:-1, :] &= mask[1:, :]
+    core[:, 1:] &= mask[:, :-1]
+    core[:, :-1] &= mask[:, 1:]
+
+    # Small regions can lose too much support under erosion; fall back to all
+    # pixels only if fewer than four interior samples remain.
+    if int(core.sum()) < 4:
+        core = mask
+
+    return np.where(core)
+
+
+def estimate_component_translations_robust(
+    frame0: np.ndarray,
+    frame1: np.ndarray,
+    components: np.ndarray,
+    search_radius: int = 2,
+    displacement_penalty: float = 1e-5,
+) -> tuple[dict[int, tuple[int, int]], dict[int, float]]:
+    """Robust RGB region translation using interior pixels and median error.
+
+    Gate 6 used mean region SSD, which is appropriate when object/background
+    ownership is stable. In the same-velocity Gate-8 attacker, the giant
+    background component includes boundaries where moving objects reveal and
+    cover pixels. Those few ownership changes can make a translated background
+    look artificially good. Here only interior support is scored, and the
+    photometric loss is the median per-pixel RGB error.
+    """
+    n = frame0.shape[0]
+    motions: dict[int, tuple[int, int]] = {}
+    confidences: dict[int, float] = {}
+
+    for comp in np.unique(components):
+        comp = int(comp)
+        ys, xs = eroded_component_pixels(components, comp)
+
+        candidates: list[tuple[float, int, int]] = []
+        for dy in range(-search_radius, search_radius + 1):
+            for dx in range(-search_radius, search_radius + 1):
+                yy = ys + dy
+                xx = xs + dx
+                valid = (yy >= 0) & (yy < n) & (xx >= 0) & (xx < n)
+                if float(np.mean(valid)) < 0.90:
+                    continue
+
+                diff = (
+                    frame0[ys[valid], xs[valid]]
+                    - frame1[yy[valid], xx[valid]]
+                )
+                per_pixel = np.mean(diff * diff, axis=1)
+                score = float(
+                    np.median(per_pixel)
+                    + displacement_penalty * (dy * dy + dx * dx)
+                )
+                candidates.append((score, dy, dx))
+
+        candidates.sort(key=lambda item: item[0])
+        if not candidates:
+            motions[comp] = (0, 0)
+            confidences[comp] = 0.0
+            continue
+
+        best = candidates[0]
+        second = candidates[1][0] if len(candidates) > 1 else float("inf")
+        motions[comp] = (int(best[1]), int(best[2]))
+        confidences[comp] = float(
+            (second - best[0]) / (second + 1e-30)
+        )
+
+    return motions, confidences
 
 
 def discover_common_fate_groups(
@@ -246,7 +334,7 @@ def run_scene(seed: int, memories) -> dict:
     frame1, _, _ = render_scene(p1_1, p2_1, seed=1001 + 2 * seed)
 
     components0 = appearance_components(frame0)
-    motions, confidences = estimate_component_translations(
+    motions, confidences = estimate_component_translations_robust(
         frame0, frame1, components0
     )
 
