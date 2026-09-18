@@ -247,64 +247,67 @@ The continuous memory is still intentionally primitive: nearest RGB-pair
 examples, oracle motion, and synthetic colours. But the discrete type lookup is
 gone.
 
-## Gate 6 — oracle motion removed by local correspondence
+## Gate 6 — one RGB frame pair writes the operator
 
-`gate6_estimated_motion_write.py` now receives only two consecutive noisy RGB
-frames.
+`gate6_estimated_motion.py` removes the externally supplied motion field from
+the learning path.
 
-The motion estimator searches a +/-2 pixel window. A naive 3x3 patch SSD was
-rejected because it drags stationary background at motion boundaries. The gate
-instead uses a **center-anchored 3x3 correspondence**: center RGB determines
-the match and the surrounding patch only breaks local ambiguities. Forward /
-backward consistency and confidence thresholds reject unstable matches.
+Each independent run receives exactly **two consecutive noisy RGB frames**.
+Object-attached microtexture is carried into the second frame, while fresh
+sensor noise is added.
 
-If two neighbouring, visibly different pixels have the same confident
-non-zero estimated displacement, their order-invariant continuous RGB-pair
-feature is stored as a positive future affinity.
+Motion is estimated locally with a +/-2 pixel search. A 5x5 patch supplies
+context, but center-pixel colour is weighted strongly so a moving object does
+not drag a strip of stationary background with it. Forward/backward
+consistency, confidence and photometric-cost gates reject unstable matches.
 
-Three training episodes produce:
-
-```text
-estimated binding examples                 42
-oracle binding examples                    48
-time-shuffled binding examples              0
-
-foreground exact displacement:
-    episode 0                            0.964
-    episode 1                            1.000
-    episode 2                            0.991
-```
-
-The later test contains **static objects at new coordinates with new texture
-and sensor noise**.
-
-Across 12 scenes:
-
-| operator | median ARI | median components | object fragmentation |
-|---|---:|---:|---:|
-| static appearance | 0.949 | 5 | 2.0 |
-| oracle-flow memory | **1.000** | **3** | **1.0** |
-| **estimated-flow memory** | **1.000** | **3** | **1.0** |
-| time-shuffled frames | 0.949 | 5 | 2.0 |
-
-The oracle and estimated-flow conditions have the same median result and the
-same minimum ARI (**0.897**) over the 12 scenes. Time-shuffled frame pairs
-produce no accepted binding examples.
-
-So the externally supplied velocity field is no longer necessary in this
-controlled world:
+The learner sees no part IDs or object labels. At visible appearance boundaries
+it writes both kinds of evidence:
 
 ```text
-consecutive RGB frames
-        -> local correspondence
-        -> common-fate evidence
-        -> persistent pair affinity
-        -> later static binding
+same confident non-zero displacement       bind
+different / moving-vs-stationary motion     do not bind
 ```
 
-The remaining scaffold is still explicit: tiny translations, synthetic
-colours/textures, no occlusion, and a hand-written rule saying that repeated
-common motion should write affinity.
+The remembered relation is a swap-invariant continuous RGB-pair feature. The
+object is then stopped at five new coordinate arrangements.
+
+Two controls separate the failure modes:
+
+- **oracle flow** uses the true displacement only to form an upper-bound memory;
+- **time-shuffled frames** pair the first frame with an unrelated future frame,
+  preserving plausible images while destroying temporal identity.
+
+Across **20 independent two-frame training runs**, each tested at five later
+static placements:
+
+```text
+estimated-flow moving-pixel coverage, median     0.844
+estimated-flow accuracy on accepted movers       1.000
+time-shuffled accepted binding examples          0
+```
+
+Run-level medians:
+
+| condition | median ARI | exact-run fraction | components | object fragmentation |
+|---|---:|---:|---:|---:|
+| static appearance | 0.481 | 0.00 | 3 | 2.0 |
+| **estimated-flow memory** | **1.000** | **0.90** | **3** | **1.0** |
+| oracle-flow upper bound | **1.000** | **1.00** | **3** | **1.0** |
+| time-shuffled frames | 0.481 | 0.00 | 3 | 2.0 |
+
+Across the 100 individual later scenes, estimated motion gives the exact
+partition in **84%** and oracle motion in **97%**. The remaining gap therefore
+belongs to correspondence / pair-memory noise, not to the common-fate idea
+itself.
+
+This is a materially stronger gate than the earlier prototype: **one frame
+pair, not several training episodes, is enough to write a relation that usually
+survives after the motion evidence disappears and the objects move elsewhere.**
+
+It remains synthetic. The next hard boundary is instance ambiguity and
+occlusion: a generic red+blue relation is not yet an instance-specific object
+identity.
 
 ## Current picture
 
