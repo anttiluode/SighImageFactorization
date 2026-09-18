@@ -574,6 +574,61 @@ The persistence gate is deliberately finite rather than absolute. Long enough
 shared contact eventually wins. It acts as a temporal causal filter: transient
 contact should not instantly redefine identity, while sustained evidence may.
 
+
+## Gate 12 — learn the relation timescale, then hit the causal boundary
+
+Gate 11 used a hand-picked `tau=64`. Gate 12 removes that choice.
+
+The training world contains only encounter histories:
+
+```text
+transient contacts:   8, 16, 24, 32 steps
+persistent contacts: 64, 96, 128 steps
+```
+
+For each candidate admission timescale, the exact Gate-11 vector dynamics are
+replayed. The selected timescale minimizes
+
+```text
+false merge on transient contacts
++
+failure to merge on persistent contacts.
+```
+
+Across 3,000 training address pairs the minimum occurs at **tau = 64**. On a
+separate 5,000-pair held-out set, the mean transient false-merge rate is
+**0.00015** and the persistent non-merge rate is **0.0**.
+
+So the slow relation timescale does not have to be inserted by hand: it can be
+selected from prior merge/split statistics.
+
+Then the attacker gives the learner two possible futures with an identical
+48-step contact prefix:
+
+```text
+future A: contact ends now      -> keep two identities
+future B: contact continues     -> merge as early as possible
+```
+
+At the end of the shared prefix, an age-only policy has exactly the same state
+in both futures. With the learned tau, about **40%** of address pairs have
+already crossed the merge threshold at this point. That number is
+simultaneously the early-merge success rate for future B and the false-merge
+rate for future A.
+
+For balanced paired futures, no age-only classifier can exceed **50%** accuracy
+before the histories diverge.
+
+The new boundary is therefore:
+
+> **experience can learn how cautious relation admission should be, but contact
+> age alone cannot predict whether a currently identical relation is about to
+> split or persist. Fast safe binding needs another predictive cue.**
+
+That cue is the next thing to earn: motion consistency, appearance continuity,
+prediction error, consequence, or some learned local statistic must supply
+information that is absent from age itself.
+
 ## Current picture
 
 ```text
