@@ -24,3 +24,4 @@ jobs:
       - run: python gate4_common_fate_write.py
       - run: python gate5_continuous_common_fate.py --samples 6
       - run: python gate6_estimated_motion_write.py --test-scenes 6
+      - run: python gate7_occlusion_relational_bridge.py --scenes 6
