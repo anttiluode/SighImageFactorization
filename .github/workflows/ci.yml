@@ -27,3 +27,4 @@ jobs:
       - run: python gate7_occlusion_relational_bridge.py --scenes 6
       - run: python gate8_persistent_phase_address.py --scenes 6
       - run: python gate9_emergent_phase_address.py --scenes 6
+      - run: python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
