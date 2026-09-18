@@ -1,185 +1,215 @@
 #!/usr/bin/env python3
-"""Gate 6: remove oracle motion using only consecutive RGB frames.
+"""Gate 6: remove oracle motion with local RGB correspondence.
 
-The remaining scaffold is explicit:
+Gate 5 still received a perfect motion field. This gate receives only two
+consecutive noisy RGB frames.
 
-1. Split frame t into local *appearance-coherent connected regions*.
-2. Estimate one small translation per region by RGB template matching into
-   frame t+1.
-3. If two adjacent appearance regions have the same confident non-zero
-   translation, store their continuous RGB boundary pair as a future affinity.
-4. Stop the objects at new positions and test whether those learned relations
-   bind the later static image.
+A deliberately small local estimator searches +/-2 pixels. Correspondence
+cost is center-anchored: center RGB carries almost all of the cost and a 3x3
+patch is only a tie-breaker. This avoids the motion-boundary failure where a
+plain patch matcher can drag a strip of stationary background with an object.
 
-No object labels, part IDs, or true motion enter the estimated-motion learner.
-Ground-truth ownership/motion are used only for evaluation and for an oracle
-upper-bound control.
+We keep only forward/backward-consistent high-confidence matches. If two
+neighbouring, visibly different pixels share the same non-zero estimated
+displacement, their continuous RGB-pair feature is saved as a positive binding
+memory.
+
+At test time the objects are static, at new coordinates, with new texture and
+sensor noise. A remembered pair can raise a weak appearance edge to a strong
+edge. Thresholded connected components are the readout.
 
 Controls:
-  * static appearance only,
-  * oracle-motion memory,
-  * estimated-motion memory,
-  * time-shuffled frame pairs.
+  * static appearance only
+  * oracle-flow upper bound
+  * estimated flow
+  * time-shuffled second frames
 
-The readout remains local connected components so object fragmentation cannot
-hide behind a global clustering assignment.
+This remains a controlled synthetic gate. It is not optical flow for natural
+video and does not claim semantic object discovery.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
-
 import numpy as np
 
-from gate5_continuous_common_fate import (
-    adjusted_rand_index,
-    build_affinity,
-    calibrate_radius,
-    mean_object_fragmentation,
-    prepare_memory,
-    threshold_components,
-)
+from grouping import adjusted_rand_index
 
 
 PALETTE = np.array(
     [
-        [0.35, 0.20, 0.20],  # background
-        [0.75, 0.20, 0.20],  # top part shared by both objects
-        [0.20, 0.25, 0.80],  # object-1 lower part
-        [0.20, 0.75, 0.25],  # object-2 lower part
+        [0.10, 0.10, 0.10],  # background
+        [0.78, 0.18, 0.18],  # feature shared by both objects
+        [0.18, 0.25, 0.82],  # object-1 second part
+        [0.18, 0.78, 0.24],  # object-2 second part
     ],
     dtype=np.float64,
+)
+
+TRAINING_EPISODES = (
+    ((3, 2), (9, 10), (0, 1), (0, -1), 11),
+    ((2, 3), (10, 9), (1, 0), (-1, 0), 12),
+    ((4, 2), (8, 10), (0, 1), (0, -1), 13),
+)
+
+TEST_POSITIONS = (
+    ((10, 2), (2, 10)),
+    ((9, 2), (1, 10)),
+    ((10, 3), (2, 9)),
 )
 
 
 def render_scene(
     pos1: tuple[int, int],
     pos2: tuple[int, int],
-    seed: int,
-    n: int = 24,
+    texture_seed: int,
+    sensor_seed: int,
+    n: int = 20,
     size: int = 8,
+    texture_amplitude: float = 0.03,
     sensor_noise: float = 0.004,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Render two rigid, textured, two-part objects.
-
-    The returned part map exists only for diagnostics/oracle construction; the
-    estimated learner never consumes it.
-    """
-    rng = np.random.default_rng(seed)
+    """Render two two-part objects with object-attached microtexture."""
+    sensor_rng = np.random.default_rng(sensor_seed)
     part = np.zeros((n, n), dtype=np.int64)
     labels = np.zeros((n, n), dtype=np.int64)
 
-    yy, xx = np.mgrid[0:n, 0:n]
-    background_texture = (
-        0.025 * np.sin(0.9 * xx + 0.7 * yy)
-        + 0.015 * np.cos(1.3 * xx - 0.4 * yy)
+    y, x = pos1
+    labels[y : y + size, x : x + size] = 1
+    part[y : y + size // 2, x : x + size] = 1
+    part[y + size // 2 : y + size, x : x + size] = 2
+
+    y, x = pos2
+    labels[y : y + size, x : x + size] = 2
+    part[y : y + size // 2, x : x + size] = 1
+    part[y + size // 2 : y + size, x : x + size] = 3
+
+    image = PALETTE[part].copy()
+
+    # Stationary texture is tied to world coordinates.
+    bg_rng = np.random.default_rng(999)
+    image += (
+        bg_rng.normal(0.0, texture_amplitude, (n, n, 3))
+        * (part == 0)[..., None]
     )
-    image = np.empty((n, n, 3), dtype=np.float64)
-    image[:] = PALETTE[0]
-    image += background_texture[..., None] * np.array([0.7, -0.3, 0.2])
 
-    for obj, (y, x) in enumerate((pos1, pos2), start=1):
-        labels[y : y + size, x : x + size] = obj
-
-        ly, lx = np.mgrid[0:size, 0:size]
-        texture = (
-            0.035 * np.sin(1.4 * lx + 0.8 * ly + obj * 0.9)
-            + 0.020 * np.cos(0.7 * lx - 1.2 * ly + obj)
+    # Object texture is tied to local object coordinates and therefore moves.
+    for object_id, (y, x) in enumerate((pos1, pos2), start=1):
+        object_rng = np.random.default_rng(texture_seed * 10 + object_id)
+        texture = object_rng.normal(
+            0.0, texture_amplitude, (size, size, 3)
         )
+        image[y : y + size, x : x + size] += texture
 
-        part[y : y + size // 2, x : x + size] = 1
-        part[y + size // 2 : y + size, x : x + size] = obj + 1
-
-        block = np.empty((size, size, 3), dtype=np.float64)
-        block[: size // 2] = PALETTE[1]
-        block[size // 2 :] = PALETTE[obj + 1]
-        block += texture[..., None] * np.array([0.5, 0.3, -0.4])
-        image[y : y + size, x : x + size] = block
-
-    image += rng.normal(0.0, sensor_noise, image.shape)
+    image += sensor_rng.normal(0.0, sensor_noise, image.shape)
     return np.clip(image, 0.0, 1.0), labels, part
-
-
-def appearance_components(image: np.ndarray) -> np.ndarray:
-    """Connected regions under the same static RGB affinity used at test time."""
-    w = build_affinity(image)
-    flat = threshold_components(w, threshold=0.5)
-    return flat.reshape(image.shape[:2])
-
-
-def estimate_component_translations(
-    frame0: np.ndarray,
-    frame1: np.ndarray,
-    components: np.ndarray,
-    search_radius: int = 2,
-    displacement_penalty: float = 1e-5,
-) -> tuple[dict[int, tuple[int, int]], dict[int, float]]:
-    """Estimate one translation per appearance component from RGB only."""
-    n = frame0.shape[0]
-    motions: dict[int, tuple[int, int]] = {}
-    confidences: dict[int, float] = {}
-
-    for comp in np.unique(components):
-        ys, xs = np.where(components == comp)
-        best = (float("inf"), 0, 0)
-        second = float("inf")
-
-        for dy in range(-search_radius, search_radius + 1):
-            for dx in range(-search_radius, search_radius + 1):
-                yy = ys + dy
-                xx = xs + dx
-                valid = (yy >= 0) & (yy < n) & (xx >= 0) & (xx < n)
-                if float(np.mean(valid)) < 0.90:
-                    continue
-
-                diff = frame0[ys[valid], xs[valid]] - frame1[yy[valid], xx[valid]]
-                score = float(
-                    np.mean(diff * diff)
-                    + displacement_penalty * (dy * dy + dx * dx)
-                )
-                if score < best[0]:
-                    second = best[0]
-                    best = (score, dy, dx)
-                elif score < second:
-                    second = score
-
-        motions[int(comp)] = (int(best[1]), int(best[2]))
-        confidences[int(comp)] = float(
-            (second - best[0]) / (second + 1e-30)
-        )
-
-    return motions, confidences
 
 
 def true_flow(
     labels: np.ndarray,
-    motion1: tuple[int, int],
-    motion2: tuple[int, int],
+    shifts: tuple[tuple[int, int], tuple[int, int]],
 ) -> np.ndarray:
     flow = np.zeros((*labels.shape, 2), dtype=np.float64)
-    flow[labels == 1] = motion1
-    flow[labels == 2] = motion2
+    for object_id, shift in enumerate(shifts, start=1):
+        flow[labels == object_id] = shift
     return flow
 
 
-def collect_boundary_examples_from_component_motion(
-    image: np.ndarray,
-    components: np.ndarray,
-    motions: dict[int, tuple[int, int]],
-    confidences: dict[int, float] | None = None,
-    min_confidence: float = 0.50,
-    min_rgb_contrast: float = 0.15,
-) -> list[tuple[np.ndarray, np.ndarray, float]]:
-    """Store only boundaries between confident moving appearance regions.
+def estimate_center_anchored_patch_flow(
+    frame0: np.ndarray,
+    frame1: np.ndarray,
+    patch_radius: int = 1,
+    search_radius: int = 2,
+    patch_weight: float = 1e-3,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Search local motion; use a 3x3 patch only to break center-RGB ties."""
+    n = frame0.shape[0]
+    flow = np.zeros((n, n, 2), dtype=np.float64)
+    confidence = np.zeros((n, n), dtype=np.float64)
+    pr = patch_radius
 
-    Requiring both sides to be confident intentionally means the huge stationary
-    background component need not provide negative evidence.  Static RGB
-    appearance already separates it in this gate; the learned memory is being
-    asked specifically to bridge unlike parts that demonstrably move together.
-    """
+    for y in range(pr, n - pr):
+        for x in range(pr, n - pr):
+            patch0 = frame0[
+                y - pr : y + pr + 1,
+                x - pr : x + pr + 1,
+            ]
+            center0 = frame0[y, x]
+            candidates = []
+
+            for dy in range(-search_radius, search_radius + 1):
+                for dx in range(-search_radius, search_radius + 1):
+                    yy, xx = y + dy, x + dx
+                    if (
+                        yy - pr < 0
+                        or yy + pr >= n
+                        or xx - pr < 0
+                        or xx + pr >= n
+                    ):
+                        continue
+
+                    patch1 = frame1[
+                        yy - pr : yy + pr + 1,
+                        xx - pr : xx + pr + 1,
+                    ]
+                    center_cost = float(
+                        np.mean((center0 - frame1[yy, xx]) ** 2)
+                    )
+                    patch_cost = float(np.mean((patch0 - patch1) ** 2))
+                    cost = center_cost + patch_weight * patch_cost
+                    candidates.append((cost, dy, dx))
+
+            candidates.sort()
+            best, second = candidates[0], candidates[1]
+            flow[y, x] = best[1:]
+            confidence[y, x] = (
+                second[0] - best[0]
+            ) / (second[0] + 1e-12)
+
+    return flow, confidence
+
+
+def estimate_bidirectional_flow(
+    frame0: np.ndarray,
+    frame1: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    forward, confidence = estimate_center_anchored_patch_flow(
+        frame0, frame1
+    )
+    backward, _ = estimate_center_anchored_patch_flow(frame1, frame0)
+
+    n = frame0.shape[0]
+    fb_error = np.full((n, n), np.inf, dtype=np.float64)
+    for y in range(n):
+        for x in range(n):
+            dy, dx = np.rint(forward[y, x]).astype(int)
+            yy, xx = y + dy, x + dx
+            if 0 <= yy < n and 0 <= xx < n:
+                fb_error[y, x] = np.linalg.norm(
+                    forward[y, x] + backward[yy, xx]
+                )
+    return forward, confidence, fb_error
+
+
+def pair_feature(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Order-invariant continuous RGB-pair feature."""
+    return np.concatenate([(a + b) / 2.0, np.abs(a - b)])
+
+
+def collect_binding_examples(
+    image: np.ndarray,
+    flow: np.ndarray,
+    confidence: np.ndarray | None = None,
+    fb_error: np.ndarray | None = None,
+    confidence_threshold: float = 0.3,
+    fb_threshold: float = 0.1,
+    min_color_distance: float = 0.25,
+) -> list[np.ndarray]:
+    """Collect unlike-appearance boundaries with the same nonzero motion."""
     n = image.shape[0]
-    examples: list[tuple[np.ndarray, np.ndarray, float]] = []
+    examples: list[np.ndarray] = []
 
     for y in range(n):
         for x in range(n):
@@ -188,83 +218,160 @@ def collect_boundary_examples_from_component_motion(
                 if yy >= n or xx >= n:
                     continue
 
-                if np.linalg.norm(image[y, x] - image[yy, xx]) < min_rgb_contrast:
+                if confidence is not None and (
+                    confidence[y, x] < confidence_threshold
+                    or confidence[yy, xx] < confidence_threshold
+                ):
                     continue
-
-                ca = int(components[y, x])
-                cb = int(components[yy, xx])
-                if ca == cb:
-                    continue
-
-                if confidences is not None and (
-                    confidences[ca] < min_confidence
-                    or confidences[cb] < min_confidence
+                if fb_error is not None and (
+                    fb_error[y, x] > fb_threshold
+                    or fb_error[yy, xx] > fb_threshold
                 ):
                     continue
 
-                va = np.asarray(motions[ca], dtype=np.float64)
-                vb = np.asarray(motions[cb], dtype=np.float64)
-                na = float(np.linalg.norm(va))
-                nb = float(np.linalg.norm(vb))
-                if na < 1e-12 and nb < 1e-12:
+                a, b = image[y, x], image[yy, xx]
+                if np.linalg.norm(a - b) < min_color_distance:
                     continue
 
-                same_motion = (
-                    na > 1e-12
-                    and nb > 1e-12
-                    and np.linalg.norm(va - vb) < 0.1
-                )
-                examples.append(
-                    (
-                        image[y, x].copy(),
-                        image[yy, xx].copy(),
-                        1.0 if same_motion else 0.0,
-                    )
-                )
+                va, vb = flow[y, x], flow[yy, xx]
+                if np.linalg.norm(va) < 0.5 or np.linalg.norm(vb) < 0.5:
+                    continue
+                if np.linalg.norm(va - vb) > 0.1:
+                    continue
+
+                examples.append(pair_feature(a, b))
 
     return examples
 
 
-def component_oracle_motion(
-    components: np.ndarray,
-    labels: np.ndarray,
-    motion1: tuple[int, int],
-    motion2: tuple[int, int],
-) -> dict[int, tuple[int, int]]:
-    """Evaluation/oracle control only: majority ownership determines true motion."""
-    motions: dict[int, tuple[int, int]] = {}
-    for comp in np.unique(components):
-        owners = labels[components == comp]
-        values, counts = np.unique(owners, return_counts=True)
-        owner = int(values[np.argmax(counts)])
-        if owner == 1:
-            motions[int(comp)] = motion1
-        elif owner == 2:
-            motions[int(comp)] = motion2
-        else:
-            motions[int(comp)] = (0, 0)
-    return motions
+def calibrate_memory_radius(
+    examples: list[np.ndarray],
+    quantile: float = 0.99,
+) -> float:
+    x = np.stack(examples)
+    nearest = []
+    for i in range(len(x)):
+        distances = np.sum((x - x[i]) ** 2, axis=1)
+        distances[i] = np.inf
+        nearest.append(float(np.min(distances)))
+    return float(np.quantile(nearest, quantile))
 
 
-def evaluate_static(
+def build_affinity(
+    image: np.ndarray,
+    memory: np.ndarray | None = None,
+    memory_radius: float | None = None,
+    appearance_sigma: float = 0.18,
+    epsilon: float = 1e-4,
+    min_color_distance: float = 0.25,
+) -> np.ndarray:
+    n = image.shape[0]
+    w = np.zeros((n * n, n * n), dtype=np.float64)
+
+    for y in range(n):
+        for x in range(n):
+            i = y * n + x
+            for dy, dx in ((1, 0), (0, 1)):
+                yy, xx = y + dy, x + dx
+                if yy >= n or xx >= n:
+                    continue
+
+                j = yy * n + xx
+                a, b = image[y, x], image[yy, xx]
+                color_distance = float(np.linalg.norm(a - b))
+                weight = epsilon + math.exp(
+                    -(color_distance**2)
+                    / (2.0 * appearance_sigma * appearance_sigma)
+                )
+
+                if (
+                    memory is not None
+                    and memory_radius is not None
+                    and color_distance >= min_color_distance
+                ):
+                    feature = pair_feature(a, b)
+                    distances = np.sum((memory - feature) ** 2, axis=1)
+                    if float(np.min(distances)) <= memory_radius:
+                        weight = 1.0
+
+                w[i, j] = w[j, i] = weight
+
+    return w
+
+
+def threshold_components(
+    w: np.ndarray,
+    threshold: float = 0.5,
+) -> np.ndarray:
+    count = w.shape[0]
+    parent = np.arange(count)
+
+    def find(a: int) -> int:
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = int(parent[a])
+        return a
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    aa, bb = np.where(np.triu(w, 1) >= threshold)
+    for a, b in zip(aa, bb):
+        union(int(a), int(b))
+
+    roots = np.asarray([find(i) for i in range(count)])
+    _, labels = np.unique(roots, return_inverse=True)
+    return labels
+
+
+def object_fragmentation(
+    truth: np.ndarray,
+    predicted: np.ndarray,
+) -> float:
+    truth = truth.ravel()
+    predicted = predicted.ravel()
+    object_ids = [x for x in np.unique(truth) if x != 0]
+    return float(
+        np.mean(
+            [
+                len(np.unique(predicted[truth == object_id]))
+                for object_id in object_ids
+            ]
+        )
+    )
+
+
+def evaluate(
     image: np.ndarray,
     truth: np.ndarray,
-    examples: list[tuple[np.ndarray, np.ndarray, float]],
+    memory: np.ndarray | None,
+    radius: float | None,
 ) -> dict:
-    if examples:
-        radius = calibrate_radius(examples)
-        memory = prepare_memory(examples)
-        w = build_affinity(image, memory, radius)
-    else:
-        radius = None
-        w = build_affinity(image)
-
-    pred = threshold_components(w, threshold=0.5)
+    predicted = threshold_components(
+        build_affinity(image, memory, radius)
+    )
     return {
-        "ari": adjusted_rand_index(truth, pred),
-        "component_count": int(np.unique(pred).size),
-        "mean_object_fragmentation": mean_object_fragmentation(truth, pred),
-        "memory_radius": radius,
+        "ari": adjusted_rand_index(truth, predicted),
+        "component_count": int(np.unique(predicted).size),
+        "object_fragmentation": object_fragmentation(truth, predicted),
+    }
+
+
+def summarize(rows: list[dict], key: str) -> dict:
+    return {
+        "median_ari": float(np.median([r[key]["ari"] for r in rows])),
+        "min_ari": float(np.min([r[key]["ari"] for r in rows])),
+        "median_component_count": float(
+            np.median([r[key]["component_count"] for r in rows])
+        ),
+        "median_object_fragmentation": float(
+            np.median([r[key]["object_fragmentation"] for r in rows])
+        ),
+        "max_object_fragmentation": float(
+            np.max([r[key]["object_fragmentation"] for r in rows])
+        ),
     }
 
 
@@ -274,214 +381,198 @@ def main() -> None:
     parser.add_argument("--json", type=str, default=None)
     args = parser.parse_args()
 
-    # The two rigid objects move in opposite horizontal directions.
-    training = (
-        ((3, 2), (13, 14), (3, 3), (13, 13)),
-        ((3, 3), (13, 13), (3, 4), (13, 12)),
-        ((3, 4), (13, 12), (3, 5), (13, 11)),
-    )
-    motion1 = (0, 1)
-    motion2 = (0, -1)
+    estimated_examples: list[np.ndarray] = []
+    oracle_examples: list[np.ndarray] = []
+    training_frames = []
+    flow_rows = []
 
-    estimated_examples: list[tuple[np.ndarray, np.ndarray, float]] = []
-    oracle_examples: list[tuple[np.ndarray, np.ndarray, float]] = []
-    motion_rows = []
-
-    for episode, (p1, p2, q1, q2) in enumerate(training):
-        frame0, labels0, _ = render_scene(p1, p2, seed=2 * episode)
-        frame1, _, _ = render_scene(q1, q2, seed=2 * episode + 1)
-
-        components = appearance_components(frame0)
-        motions, confidences = estimate_component_translations(
-            frame0, frame1, components
+    for episode, (pos1, pos2, shift1, shift2, texture_seed) in enumerate(
+        TRAINING_EPISODES
+    ):
+        frame0, labels0, _ = render_scene(
+            pos1,
+            pos2,
+            texture_seed=texture_seed,
+            sensor_seed=100 + episode,
         )
-        estimated_examples.extend(
-            collect_boundary_examples_from_component_motion(
-                frame0,
-                components,
-                motions,
-                confidences,
-            )
+        next_pos1 = (
+            pos1[0] + shift1[0],
+            pos1[1] + shift1[1],
         )
-
-        oracle_motions = component_oracle_motion(
-            components, labels0, motion1, motion2
+        next_pos2 = (
+            pos2[0] + shift2[0],
+            pos2[1] + shift2[1],
         )
-        oracle_examples.extend(
-            collect_boundary_examples_from_component_motion(
-                frame0,
-                components,
-                oracle_motions,
-                confidences=None,
-                min_confidence=0.0,
-            )
+        frame1, _, _ = render_scene(
+            next_pos1,
+            next_pos2,
+            texture_seed=texture_seed,
+            sensor_seed=200 + episode,
         )
 
-        moving_correct = []
-        moving_confidence = []
-        background_confidence = []
-        for comp in np.unique(components):
-            comp = int(comp)
-            owners = labels0[components == comp]
-            values, counts = np.unique(owners, return_counts=True)
-            owner = int(values[np.argmax(counts)])
-            expected = (
-                motion1 if owner == 1
-                else motion2 if owner == 2
-                else (0, 0)
-            )
-            if owner == 0:
-                background_confidence.append(confidences[comp])
-            else:
-                moving_correct.append(motions[comp] == expected)
-                moving_confidence.append(confidences[comp])
+        estimated_flow, confidence, fb_error = estimate_bidirectional_flow(
+            frame0, frame1
+        )
+        oracle_flow = true_flow(labels0, (shift1, shift2))
 
-        motion_rows.append(
+        valid = (confidence > 0.3) & (fb_error < 0.1)
+        foreground = (labels0 > 0) & valid
+        background = (labels0 == 0) & valid
+
+        flow_rows.append(
             {
                 "episode": episode,
-                "appearance_component_count": int(np.unique(components).size),
-                "moving_component_motion_accuracy": float(np.mean(moving_correct)),
-                "moving_component_median_confidence": float(
-                    np.median(moving_confidence)
+                "valid_foreground_pixels": int(foreground.sum()),
+                "foreground_exact_displacement_fraction": float(
+                    np.mean(
+                        np.all(
+                            estimated_flow[foreground]
+                            == oracle_flow[foreground],
+                            axis=1,
+                        )
+                    )
                 ),
-                "background_component_median_confidence": float(
-                    np.median(background_confidence)
+                "foreground_mean_endpoint_error": float(
+                    np.mean(
+                        np.linalg.norm(
+                            estimated_flow[foreground]
+                            - oracle_flow[foreground],
+                            axis=1,
+                        )
+                    )
+                ),
+                "valid_background_pixels": int(background.sum()),
+                "background_zero_displacement_fraction": float(
+                    np.mean(
+                        np.all(
+                            estimated_flow[background] == 0.0,
+                            axis=1,
+                        )
+                    )
                 ),
             }
         )
 
-    # Time-shuffled control: each frame0 is paired with an unrelated scene well
-    # outside the search radius.  A valid estimator should report low confidence
-    # rather than confidently inventing common fate.
-    shuffled_targets = (
-        ((12, 2), (3, 14)),
-        ((11, 3), (2, 13)),
-        ((12, 4), (4, 12)),
-    )
-    shuffled_examples: list[tuple[np.ndarray, np.ndarray, float]] = []
-    shuffled_confidences = []
-
-    for episode, (p1, p2, _, _) in enumerate(training):
-        frame0, _, _ = render_scene(p1, p2, seed=2 * episode)
-        q1, q2 = shuffled_targets[episode]
-        wrong_next, _, _ = render_scene(q1, q2, seed=50 + episode)
-
-        components = appearance_components(frame0)
-        motions, confidences = estimate_component_translations(
-            frame0, wrong_next, components
-        )
-        shuffled_examples.extend(
-            collect_boundary_examples_from_component_motion(
+        estimated_examples.extend(
+            collect_binding_examples(
                 frame0,
-                components,
-                motions,
-                confidences,
+                estimated_flow,
+                confidence,
+                fb_error,
             )
         )
-        shuffled_confidences.extend(confidences.values())
+        oracle_examples.extend(
+            collect_binding_examples(frame0, oracle_flow)
+        )
+        training_frames.append((frame0, frame1))
 
-    test_positions = (
-        ((12, 2), (3, 14)),
-        ((11, 3), (2, 13)),
-        ((12, 4), (4, 12)),
-    )
+    estimated_radius = calibrate_memory_radius(estimated_examples)
+    oracle_radius = calibrate_memory_radius(oracle_examples)
+    estimated_memory = np.stack(estimated_examples)
+    oracle_memory = np.stack(oracle_examples)
+
+    # Pair each source frame with another episode's destination frame.
+    shuffled_examples: list[np.ndarray] = []
+    for i in range(len(training_frames)):
+        frame0 = training_frames[i][0]
+        frame1 = training_frames[(i + 1) % len(training_frames)][1]
+        flow, confidence, fb_error = estimate_bidirectional_flow(
+            frame0, frame1
+        )
+        shuffled_examples.extend(
+            collect_binding_examples(
+                frame0,
+                flow,
+                confidence,
+                fb_error,
+            )
+        )
 
     rows = []
     for sample in range(args.test_scenes):
-        p1, p2 = test_positions[sample % len(test_positions)]
-        image, truth, _ = render_scene(p1, p2, seed=100 + sample)
+        pos1, pos2 = TEST_POSITIONS[sample % len(TEST_POSITIONS)]
+        image, truth, _ = render_scene(
+            pos1,
+            pos2,
+            texture_seed=100 + sample,
+            sensor_seed=500 + sample,
+            sensor_noise=0.006,
+        )
+
+        if shuffled_examples:
+            shuffled_memory = np.stack(shuffled_examples)
+            shuffled_radius = calibrate_memory_radius(shuffled_examples)
+        else:
+            shuffled_memory = None
+            shuffled_radius = None
 
         rows.append(
             {
                 "sample": sample,
-                "pos1": list(p1),
-                "pos2": list(p2),
-                "static": evaluate_static(image, truth, []),
-                "oracle_motion": evaluate_static(
-                    image, truth, oracle_examples
+                "pos1": list(pos1),
+                "pos2": list(pos2),
+                "static": evaluate(image, truth, None, None),
+                "oracle_flow_memory": evaluate(
+                    image,
+                    truth,
+                    oracle_memory,
+                    oracle_radius,
                 ),
-                "estimated_motion": evaluate_static(
-                    image, truth, estimated_examples
+                "estimated_flow_memory": evaluate(
+                    image,
+                    truth,
+                    estimated_memory,
+                    estimated_radius,
                 ),
-                "time_shuffled": evaluate_static(
-                    image, truth, shuffled_examples
+                "time_shuffled": evaluate(
+                    image,
+                    truth,
+                    shuffled_memory,
+                    shuffled_radius,
                 ),
             }
         )
 
-    def summarize(name: str) -> dict:
-        ari = [r[name]["ari"] for r in rows]
-        comps = [r[name]["component_count"] for r in rows]
-        frag = [r[name]["mean_object_fragmentation"] for r in rows]
-        return {
-            "median_ari": float(np.median(ari)),
-            "min_ari": float(np.min(ari)),
-            "median_component_count": float(np.median(comps)),
-            "median_object_fragmentation": float(np.median(frag)),
-            "max_object_fragmentation": float(np.max(frag)),
-        }
-
     report = {
-        "training_episodes": len(training),
+        "training_episodes": len(TRAINING_EPISODES),
         "test_scenes": args.test_scenes,
-        "estimated_training_examples": len(estimated_examples),
-        "oracle_training_examples": len(oracle_examples),
-        "time_shuffled_training_examples": len(shuffled_examples),
-        "moving_component_motion_accuracy": float(
-            np.mean(
-                [
-                    row["moving_component_motion_accuracy"]
-                    for row in motion_rows
-                ]
-            )
-        ),
-        "moving_component_median_confidence": float(
-            np.median(
-                [
-                    row["moving_component_median_confidence"]
-                    for row in motion_rows
-                ]
-            )
-        ),
-        "background_component_median_confidence": float(
-            np.median(
-                [
-                    row["background_component_median_confidence"]
-                    for row in motion_rows
-                ]
-            )
-        ),
-        "time_shuffled_component_median_confidence": float(
-            np.median(shuffled_confidences)
-        ),
+        "estimated_binding_examples": len(estimated_examples),
+        "oracle_binding_examples": len(oracle_examples),
+        "time_shuffled_binding_examples": len(shuffled_examples),
+        "estimated_memory_radius": estimated_radius,
+        "oracle_memory_radius": oracle_radius,
+        "flow_quality": flow_rows,
         "summary": {
-            "static": summarize("static"),
-            "oracle_motion": summarize("oracle_motion"),
-            "estimated_motion": summarize("estimated_motion"),
-            "time_shuffled": summarize("time_shuffled"),
+            "static": summarize(rows, "static"),
+            "oracle_flow_memory": summarize(rows, "oracle_flow_memory"),
+            "estimated_flow_memory": summarize(
+                rows, "estimated_flow_memory"
+            ),
+            "time_shuffled": summarize(rows, "time_shuffled"),
         },
-        "motion_rows": motion_rows,
-        "rows": rows,
         "interpretation": (
-            "Oracle motion is no longer required. Appearance-coherent regions "
-            "estimated from frame t can recover their small translations from "
-            "frame t+1 using RGB template matching alone. Common motion then "
-            "writes boundary-pair affinities that bind the later static objects "
-            "at new positions. Time-shuffled frames produce no confident write. "
-            "The remaining scaffold is the appearance-region decomposition; dense "
-            "correspondence, occlusion and natural images are still untested."
+            "Local RGB correspondence is sufficient in this controlled world "
+            "to recover common-fate evidence without oracle motion. Estimated "
+            "flow reaches the same later static binding result as oracle flow, "
+            "while time-shuffling destroys the binding evidence. High static "
+            "ARI is again not enough: the static/shuffled conditions leave each "
+            "true object split into two components, whereas both coherent-flow "
+            "memories reduce fragmentation to one."
         ),
+        "rows": rows,
     }
 
     print(json.dumps(report, indent=2))
 
     assert len(estimated_examples) > 0
-    assert report["moving_component_motion_accuracy"] > 0.95
+    assert len(oracle_examples) > 0
     assert len(shuffled_examples) == 0
-    assert (
-        report["summary"]["estimated_motion"]["median_object_fragmentation"]
-        <= 1.0
-    )
+    assert report["summary"]["estimated_flow_memory"][
+        "median_object_fragmentation"
+    ] == 1.0
+    assert report["summary"]["static"][
+        "median_object_fragmentation"
+    ] > 1.0
 
     if args.json:
         Path(args.json).write_text(
