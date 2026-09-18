@@ -548,12 +548,104 @@ New boundary:
 }
 ]
 
+## Gate 13: predictive history controls the relation clock
+
+Gate 12 showed that age cannot distinguish two identical contact prefixes. Gate
+13 gives the system one pre-contact observable that can contain information the
+age variable lacks.
+
+Every held-out encounter lasts exactly **32 contact steps**. Before contact, a
+pair has twelve noisy velocity observations.
+
+```text
+genuine relation:
+    both sides share one latent velocity process + sensor noise
+
+accidental relation:
+    each side has an independent latent velocity process + sensor noise
+```
+
+The learner compresses that local history to
+
+[
+e = \frac{1}{T}\sum_t ||v_a(t)-v_b(t)||^2
+]
+
+and learns one threshold from 3,000 past outcomes.
+
+Reference threshold and held-out cue result:
+
+```text
+threshold                          0.1869849
+training balanced error            0.006342
+held-out accuracy                  0.9922
+held-out genuine hit rate          0.999608
+held-out accidental false hit      0.015504
+```
+
+The cue then chooses a relation-admission timescale:
+
+```text
+predicted genuine       tau=16
+predicted accidental    tau=96
+age-only control        tau=64
+```
+
+All policies receive the same 5,000 held-out D=8 address pairs and the same
+32-step contact duration.
+
+| policy | genuine merge | accidental merge | balanced accuracy |
+|---|---:|---:|---:|
+| age-only tau=64 | 0.000785 | 0.000408 | 0.500188 |
+| always-fast tau=16 | 0.803060 | 0.807834 | 0.497613 |
+| always-cautious tau=96 | 0.000000 | 0.000408 | 0.499796 |
+| **predictive clock** | **0.802668** | **0.013056** | **0.894806** |
+| shuffled cue | 0.400942 | 0.423909 | 0.488516 |
+
+That separation is the mechanism receipt.
+
+The age-only system is safe because it is almost inert at 32 steps. The
+always-fast system is responsive but destroys identity indiscriminately. The
+predictive system gets almost the always-fast genuine merge rate while keeping
+accidental merges near one percent.
+
+Shuffling the cue across relations destroys the result. Therefore the benefit is
+not the mere existence of two clocks; it depends on the cue carrying information
+about the particular relation.
+
+### Distribution shift
+
+Increase velocity sensor noise from 0.15 to 0.20 without relearning the
+threshold:
+
+```text
+cue accuracy                      0.8624
+genuine merge fraction            0.58530
+accidental false merge            0.00160
+balanced relation accuracy        0.79185
+```
+
+Performance degrades substantially, as it should. The learned predictive
+observable is useful, not invariant.
+
+New boundary:
+
+[
+\boxed{
+\text{predictive history can buy fast safe binding}
+\quad\text{only to the extent that the predictor transfers}
+}
+]
+
 ## Next attacker
 
-Give relation admission a predictive observable that can differ *before* the
-merge/split outcome is known. The cleanest next gate is to let local prediction
-error or motion/appearance consistency modulate edge eligibility, then compare
-it against the learned age-only rule on matched identical-duration encounters.
-If the predictive rule wins, it has earned faster binding rather than merely a
-different global delay.
+Remove the synthetic velocity-history statistic. Feed the relation learner only
+consecutive noisy RGB frames, derive its predictive evidence from the same
+estimated correspondence machinery introduced in Gate 6, and ask whether that
+image-derived confidence can control admission better than age alone.
+
+The key control should remain matched duration: two contacts last equally long,
+but only one has a coherent pre-contact visual trajectory. If RGB-derived
+history still selects the right clock, the predictive mechanism has moved back
+into the actual image/world loop.
 
