@@ -1,0 +1,46 @@
+{
+  "gate": 12,
+  "title": "learned relation timescale and identical-prefix boundary",
+  "reference_run": {
+    "train_trials": 3000,
+    "test_trials": 5000,
+    "dimension": 8,
+    "candidate_taus": [
+      8,
+      12,
+      16,
+      24,
+      32,
+      48,
+      64,
+      96,
+      128
+    ],
+    "transient_durations": [
+      8,
+      16,
+      24,
+      32
+    ],
+    "persistent_durations": [
+      64,
+      96,
+      128
+    ],
+    "learned_tau": 64,
+    "held_out": {
+      "false_merge": 0.00015,
+      "false_nonmerge": 0,
+      "objective": 0.00015
+    },
+    "paired_prefix": {
+      "steps": 48,
+      "collision_fraction": 0.4012,
+      "transient_false_merge_if_contact_ends_now": 0.4012,
+      "persistent_early_merge_success_if_contact_continues": 0.4012,
+      "balanced_future_label_accuracy_from_age_only": 0.5,
+      "paired_state_difference": 0
+    }
+  },
+  "boundary": "Encounter statistics can select a useful global admission timescale, but relation age alone contains no information that distinguishes two futures with identical observed prefixes. Faster safe binding requires a predictive cue beyond age."
+}
