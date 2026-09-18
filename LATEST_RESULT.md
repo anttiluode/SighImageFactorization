@@ -399,16 +399,97 @@ No cross-instance repulsion or object enumerator is required in this controlled
 case. Frozen random vectors still fragment, showing that capacity without
 within-object synchronization is not enough.
 
+## Gate 11: temporary contact attacks the address
+
+Gate 10's local-only address has one hidden assumption: separate instances never
+become local same-motion neighbours.
+
+Gate 11 initializes exactly the Gate-10 object:
+
+```text
+object A: two locally synchronized D=8 components
+object B: two locally synchronized D=8 components
+cross-instance coupling: none
+```
+
+Across 5,000 random trials the internal cosine is 1.0 to numerical precision,
+while the maximum pre-contact cross-instance cosine is **0.92560** and there are
+zero collisions at the 0.99 identity threshold.
+
+Then one temporary same-motion edge is inserted between the two established
+objects.
+
+### Instantaneous edge admission fails
+
+If a new local edge receives full coupling weight immediately:
+
+```text
+contact 8 steps      collision fraction   0.0004
+contact 16 steps                          0.1302
+contact 32 steps                          1.0000
+```
+
+At 32 steps the median cross-instance cosine is **0.999612**. The two instance
+addresses have effectively become one.
+
+Removing contact and running 120 additional steps with only the original
+within-object edges does not repair the loss: collision remains **1.0000**.
+
+### Persistence-gated edge admission
+
+Give the new edge a slow eligibility state instead:
+
+[
+w_{t+1}=w_t+\frac{1-w_t}{64}.
+]
+
+Results:
+
+```text
+contact 8 steps      collision fraction   0.0000
+contact 16 steps                          0.0000
+contact 32 steps                          0.0008
+contact 64 steps                          0.9998
+contact 128 steps                         1.0000
+```
+
+At 32 steps the new edge has reached weight **0.39586**, but the median
+cross-instance cosine is still only **0.86614**. After contact is removed and
+120 separation steps pass, collision remains only **0.0008**.
+
+The gate therefore does not make identity permanent. Sustained evidence
+eventually wins. It creates a **timescale separation**:
+
+[
+\boxed{
+\text{brief contact} \not\Rightarrow \text{identity rewrite}
+\qquad
+\text{persistent contact} \Rightarrow \text{possible rewrite}
+}
+]
+
+### Boundary
+
+Gate 10 established:
+
+[
+\text{local synchrony creates address; dimension supplies capacity}.
+]
+
+Gate 11 adds:
+
+[
+\boxed{\text{identity also needs a timescale for admitting new relations}.}
+]
+
+This is the first point in the lineage where the *age of an edge* matters
+independently of its instantaneous evidence.
+
 ## Next attacker
 
-Remove the scaffolding in order:
+Move the eligibility state back into the full image/world loop. The remaining
+hand-written quantity is the relation timescale itself. The next useful question
+is whether the system can learn how quickly a new relation deserves authority
+from prediction error / repeated evidence, and whether that learned timescale
+survives real merge-split events.
 
-1. continuous RGB/local feature embeddings instead of discrete appearance IDs;
-2. estimated correspondence/flow instead of oracle motion;
-3. occlusion and clutter;
-4. a learned persistent state that writes the affinity without an explicit
-   hand-coded common-fate rule.
-
-The strongest kill condition remains location transfer: a system that only
-remembers where the moving blob was must fail when the same object stops
-somewhere else.
