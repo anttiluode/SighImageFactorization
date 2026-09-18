@@ -289,6 +289,63 @@ motion evidence is gone.
 The time-shuffled attacker is important: unrelated frame pairs do not merely
 produce a worse write; the confidence gate refuses to write anything at all.
 
+## Gate 7 — occlusion reveals the instance-binding boundary
+
+Gate 6 can learn that two unlike appearance regions belong together from RGB
+motion alone. But that learned relation is still **generic**: it says which
+types of parts have belonged together, not which particular instance owns a
+part now.
+
+`gate7_occlusion_relational_bridge.py` attacks that distinction.
+
+At test time a one-pixel background occluder removes the direct contact between
+the two visible parts of each learned object. A novel clutter patch is placed at
+the same short geometric gap.
+
+The purely local learned operator cannot cross the missing row:
+
+```text
+local learned memory
+    median ARI                 0.980
+    components                 6
+    mean object fragmentation  1.667
+    cross-object collisions    0
+```
+
+A relation-specific nonlocal bridge uses **region-level** appearance relations
+learned during common motion. It repairs fragmentation:
+
+```text
+region relation bridge
+    median ARI                 1.000
+    components                 4
+    mean object fragmentation  1.000
+```
+
+But the per-scene attacker matters more than the median. In **2 of 6** layouts,
+the two real objects themselves come close enough that a legitimately learned
+part relation also matches the wrong instance, producing a cross-object bind.
+
+A proximity-only bridge is worse: it cross-binds in **6 of 6** scenes and has
+median ARI **0.945**.
+
+So Gate 7 establishes another boundary:
+
+[
+\boxed{\text{part relation} \neq \text{instance identity}}
+]
+
+The important failure is not noise. The relation can be correct and still be
+insufficient. Once multiple compatible objects coexist, a system needs an
+instance-specific persistent variable—a phase, slot, track, address, or
+equivalent state—to say *which copy of the relation is currently this object*.
+
+This is the point where the AKOrN/synchrony clue becomes more than analogy:
+oscillatory state is potentially useful not because synchronization is a better
+diffusion solver (Gate 3 says it was not), but because **relative phase/state can
+serve as an instance-binding address while generic feature relations remain
+shared**.
+
 ## Current picture
 
 ```text
