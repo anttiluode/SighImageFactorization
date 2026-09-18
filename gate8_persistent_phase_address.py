@@ -146,14 +146,25 @@ def discover_common_fate_groups(
     components: np.ndarray,
     motions: dict[int, tuple[int, int]],
     confidences: dict[int, float],
-    min_confidence: float = 0.50,
 ) -> list[list[int]]:
-    """Connected moving component groups, not global velocity bins."""
+    """Connected moving groups after removing the dominant substrate region.
+
+    The robust matcher already decides whether displacement is zero or non-zero.
+    Its relative score margin is reported as confidence, but is not allowed to
+    become an object-definition threshold.  The single largest appearance
+    component is treated as the scene substrate/reference; this is an explicit
+    scaffold of Gate 8, not an object label.
+    """
+    labels, counts = np.unique(components, return_counts=True)
+    substrate = int(labels[int(np.argmax(counts))])
+
     moving = set()
-    for comp in np.unique(components):
+    for comp in labels:
         comp = int(comp)
+        if comp == substrate:
+            continue
         motion = np.asarray(motions[comp], dtype=np.float64)
-        if confidences[comp] >= min_confidence and np.linalg.norm(motion) > 1e-12:
+        if np.linalg.norm(motion) > 1e-12:
             moving.add(comp)
 
     neighbours: dict[int, set[int]] = {comp: set() for comp in moving}
@@ -424,7 +435,7 @@ def run_scene(seed: int, memories) -> dict:
     moving_components = []
     for comp in np.unique(components0):
         comp = int(comp)
-        if np.linalg.norm(motions[comp]) > 1e-12 and confidences[comp] >= 0.50:
+        if np.linalg.norm(motions[comp]) > 1e-12:
             moving_components.append(
                 {
                     "component": comp,
