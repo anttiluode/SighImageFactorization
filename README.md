@@ -401,6 +401,67 @@ the unique solution. A slot, track ID, persistent vector, or another dynamical
 address could play the same abstract role. What the gate establishes is the
 need for an instance-specific state variable beyond generic feature relations.
 
+## Gate 9 — oscillator dynamics generate the address
+
+Gate 8 still assigned one arbitrary phase after explicitly enumerating each
+common-fate group. `gate9_emergent_phase_address.py` removes that helper.
+
+Each moving appearance component starts with a random scalar phase. The signed
+coupling graph is written only from local relations:
+
+```text
+adjacent + same non-zero motion    attractive coupling +1.0
+other moving-component pairs       weak repulsion      -0.2
+```
+
+Both object instances deliberately move with the **same velocity**, so velocity
+cannot act as the instance label.
+
+Plain Kuramoto relaxation produces the address. Across the six CI scenes:
+
+```text
+minimum attractive-edge phase cosine     1.000000
+maximum repulsive-edge phase cosine     -1.000000
+moving appearance components             4
+```
+
+The resulting phase is then carried into exactly the same occluded static
+binding problem used by Gate 8.
+
+| mechanism | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.97992 | 6 | 1.667 | 0 / 6 |
+| relation only | 0.95829 | 3 | 1.000 | **6 / 6** |
+| frozen random phase | 0.97992 | 6 | 1.667 | 0 / 6 |
+| **emergent synchronized phase** | **1.00000** | **4** | **1.000** | **0 / 6** |
+| collapsed initial phase | 0.95829 | 3 | 1.000 | **6 / 6** |
+| reset phase | 0.97992 | 6 | 1.667 | 0 / 6 |
+
+The frozen-random attacker matters: **persistent arbitrary vectors are not
+enough under this readout**. The two parts of an object must first synchronize
+into a shared address.
+
+The collapsed-phase attacker is the complementary intervention. With exact
+initial symmetry every sine difference is zero, so the oscillator dynamics
+cannot invent an instance distinction. The generic relation then cross-binds
+exactly as in Gate 7.
+
+So the demonstrated mechanism is now:
+
+```text
+local common-fate relation
+        -> signed oscillator coupling
+        -> within-instance synchrony
+        -> between-instance phase separation
+        -> persistent instance address
+        -> correct later occluded binding
+```
+
+This is still not an AKOrN reproduction, and phase is still not claimed as the
+unique representation. What changed is that the address is no longer assigned
+by an external instance enumerator: **the local oscillator dynamics generate
+it.**
+
 ## Current picture
 
 ```text
@@ -453,6 +514,11 @@ python gate1_source_separation.py --samples 256 --seeds 3
 python gate2_frame_geometry.py
 python gate3_same_graph_binding.py
 python gate4_common_fate_write.py
+python gate5_continuous_common_fate.py --samples 6
+python gate6_estimated_motion_write.py --test-scenes 6
+python gate7_occlusion_relational_bridge.py --scenes 6
+python gate8_persistent_phase_address.py --scenes 6
+python gate9_emergent_phase_address.py --scenes 6
 ```
 
 No SciPy or scikit-learn is required.

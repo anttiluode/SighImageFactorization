@@ -1,0 +1,51 @@
+{
+  "scenes": 6,
+  "median_moving_component_count": 4.0,
+  "minimum_attractive_edge_cosine": 1.0,
+  "maximum_repulsive_edge_cosine": -0.9999999999999997,
+  "summary": {
+    "local_memory": {
+      "median_ari": 0.9799243701733211,
+      "median_component_count": 6.0,
+      "median_object_fragmentation": 1.6666666666666667,
+      "collision_scenes": 0,
+      "fragmented_scenes": 6
+    },
+    "relation_only": {
+      "median_ari": 0.9582862159272024,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 6,
+      "fragmented_scenes": 0
+    },
+    "frozen_random_phase": {
+      "median_ari": 0.9799243701733211,
+      "median_component_count": 6.0,
+      "median_object_fragmentation": 1.6666666666666667,
+      "collision_scenes": 0,
+      "fragmented_scenes": 6
+    },
+    "emergent_phase": {
+      "median_ari": 1.0,
+      "median_component_count": 4.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 0,
+      "fragmented_scenes": 0
+    },
+    "collapsed_initial_phase": {
+      "median_ari": 0.9582862159272024,
+      "median_component_count": 3.0,
+      "median_object_fragmentation": 1.0,
+      "collision_scenes": 6,
+      "fragmented_scenes": 0
+    },
+    "reset_phase": {
+      "median_ari": 0.9799243701733211,
+      "median_component_count": 6.0,
+      "median_object_fragmentation": 1.6666666666666667,
+      "collision_scenes": 0,
+      "fragmented_scenes": 6
+    }
+  },
+  "boundary": "Local signed oscillator dynamics can generate a persistent instance address. Frozen unsynchronized random phase does not bind the parts; exact collapsed symmetry cross-binds; resetting phase fragments."
+}
