@@ -462,6 +462,60 @@ unique representation. What changed is that the address is no longer assigned
 by an external instance enumerator: **the local oscillator dynamics generate
 it.**
 
+## Gate 10 — local-only vector address capacity
+
+Gate 9 still used weak **global repulsion** between moving components that were
+not local same-motion neighbours. Gate 10 deletes those edges completely.
+
+Each moving appearance component begins as a random (D)-dimensional unit
+vector. The only interaction is local attraction between adjacent components
+that share the same non-zero motion. Disconnected objects never communicate.
+
+With (D=8), twelve occluded static test scenes give:
+
+```text
+moving components                  4
+local attractive edges             2
+minimum synchronized-edge cosine   1.000000
+maximum cross-instance cosine      0.514826
+address collisions                 0 / 12
+```
+
+| mechanism | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.97992 | 6 | 1.667 | 0 / 12 |
+| relation only | 0.95829 | 3 | 1.000 | **12 / 12** |
+| frozen random vector | 0.97992 | 6 | 1.667 | 0 / 12 |
+| **local vector synchrony** | **1.00000** | **4** | **1.000** | **0 / 12** |
+| reset vector | 0.97992 | 6 | 1.667 | 0 / 12 |
+
+So explicit cross-instance repulsion is unnecessary. Each disconnected island
+can synchronize locally and inherit an independent orientation through random
+symmetry breaking.
+
+The remaining failure mode is **address collision**. A 20,000-pair Monte Carlo
+sweep at the same cosine >= 0.99 identity threshold measures:
+
+| vector dimension | accidental collision fraction |
+|---:|---:|
+| 2 | 0.04435 |
+| 3 | 0.00450 |
+| 4 | 0.00055 |
+| 8 | 0 / 20,000 |
+| 16 | 0 / 20,000 |
+
+The 99th-percentile cross-instance cosine falls from **0.9996 in 2-D** to
+**0.7598 in 8-D** and **0.5480 in 16-D**.
+
+That gives high-dimensional oscillator orientation a very concrete function in
+this lineage:
+
+> **dimension is instance-address capacity.**
+
+It is not evidence that 8-D is optimal, nor that biological binding uses this
+code. It shows why a multidimensional unit-vector state can be useful even when
+all interactions are strictly local and attractive.
+
 ## Current picture
 
 ```text
@@ -519,6 +573,7 @@ python gate6_estimated_motion_write.py --test-scenes 6
 python gate7_occlusion_relational_bridge.py --scenes 6
 python gate8_persistent_phase_address.py --scenes 6
 python gate9_emergent_phase_address.py --scenes 6
+python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
 ```
 
 No SciPy or scikit-learn is required.
