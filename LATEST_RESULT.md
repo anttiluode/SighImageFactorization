@@ -349,6 +349,56 @@ The useful claim is therefore narrower and stronger:
 
 rather than merely “a phase variable can store an externally assigned ID.”
 
+## Gate 10: global repulsion removed
+
+Gate 9 generated the phase address dynamically but still used weak all-to-all
+repulsion between moving components that were not local same-motion neighbours.
+
+Gate 10 removes that global information entirely.
+
+Each moving appearance component starts as a random (D)-dimensional unit
+vector. Only local adjacent same-motion components attract. The two object
+instances are disconnected and never communicate.
+
+Twelve-scene CI result at (D=8):
+
+| condition | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.97992 | 6 | 1.667 | 0 / 12 |
+| relation only | 0.95829 | 3 | 1.000 | **12 / 12** |
+| frozen random vector | 0.97992 | 6 | 1.667 | 0 / 12 |
+| **local vector synchrony** | **1.00000** | **4** | **1.000** | **0 / 12** |
+| reset vector | 0.97992 | 6 | 1.667 | 0 / 12 |
+
+The two local attractive edges synchronize to cosine **1.0**. Across the 12
+actual scenes the maximum cosine between the two independent instance addresses
+is only **0.514826**, far below the 0.99 same-address threshold.
+
+Address-capacity attacker, 20,000 independent address pairs:
+
+```text
+D=2    collision fraction  0.04435
+D=3                        0.00450
+D=4                        0.00055
+D=8                        0.00000
+D=16                       0.00000
+```
+
+At D=8 the maximum cosine in all 20,000 random address pairs is **0.95625**;
+at D=16 it is **0.80901**.
+
+New boundary:
+
+[
+\boxed{
+\text{local synchrony creates the address; dimension supplies address capacity}
+}
+]
+
+No cross-instance repulsion or object enumerator is required in this controlled
+case. Frozen random vectors still fragment, showing that capacity without
+within-object synchronization is not enough.
+
 ## Next attacker
 
 Remove the scaffolding in order:

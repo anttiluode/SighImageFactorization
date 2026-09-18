@@ -1,0 +1,25 @@
+{
+  "scenes": 12,
+  "state_dimension": 8,
+  "same_address_cosine_threshold": 0.99,
+  "median_moving_component_count": 4.0,
+  "median_local_edge_count": 2.0,
+  "minimum_local_edge_cosine": 0.9999999999999999,
+  "maximum_cross_instance_cosine": 0.5148260047105844,
+  "address_collision_scenes": 0,
+  "capacity_sweep": {
+    "2": {"trials": 20000, "collision_fraction": 0.04435, "cosine_p99": 0.9996000488464986},
+    "3": {"trials": 20000, "collision_fraction": 0.0045, "cosine_p99": 0.9796713921417407},
+    "4": {"trials": 20000, "collision_fraction": 0.00055, "cosine_p99": 0.9359769223616394},
+    "8": {"trials": 20000, "collision_fraction": 0.0, "cosine_p99": 0.759795881584449, "maximum_cosine": 0.9562515520877028},
+    "16": {"trials": 20000, "collision_fraction": 0.0, "cosine_p99": 0.5479610879197935, "maximum_cosine": 0.8090141010763527}
+  },
+  "summary": {
+    "local_memory": {"median_ari": 0.9799243701733211, "components": 6.0, "fragmentation": 1.6666666666666667, "collision_scenes": 0},
+    "relation_only": {"median_ari": 0.9582862159272024, "components": 3.0, "fragmentation": 1.0, "collision_scenes": 12},
+    "frozen_random_vector": {"median_ari": 0.9799243701733211, "components": 6.0, "fragmentation": 1.6666666666666667, "collision_scenes": 0},
+    "local_vector_sync": {"median_ari": 1.0, "components": 4.0, "fragmentation": 1.0, "collision_scenes": 0},
+    "reset_vector": {"median_ari": 0.9799243701733211, "components": 6.0, "fragmentation": 1.6666666666666667, "collision_scenes": 0}
+  },
+  "boundary": "Explicit global repulsion is unnecessary. Purely local attraction synchronizes each disconnected instance into an independent orientation; higher-dimensional unit vectors provide rapidly increasing address capacity."
+}
