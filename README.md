@@ -770,6 +770,87 @@ next useful attacker is no longer “can RGB supply motion?” It is whether the
 predictive relation survives **appearance ambiguity, partial occlusion, and
 track uncertainty** without relying on clean pre-segmented regions.
 
+
+## Gate 15 — track confidence vetoes false common fate
+
+Gate 14 reached the oracle motion ceiling because its correspondence problem was
+clean. Gate 15 attacks that hidden assumption.
+
+Each pre-contact tracking probe now gives candidate B:
+
+- an appearance jump of **0.15**,
+- one-column partial occlusion,
+- and a look-alike B continuation near the displacement predicted by candidate A.
+
+That last attacker matters. When true A/B motion differs, the local template
+matcher can follow the plausible look-alike and report exactly the dangerous
+answer:
+
+```text
+estimated A motion == estimated B motion
+```
+
+even though the hidden true motions differ.
+
+The ordinary common-fate statistic therefore becomes actively misleading.
+
+CI reference, **80 training / 120 held-out relation histories**:
+
+```text
+learned RGB residual threshold        0.000000
+learned track-confidence threshold    0.596747
+
+residual-only RGB cue accuracy        0.5167
+residual-only false-positive rate     0.9667
+
+confidence-gated RGB cue accuracy     0.9250
+confidence-gated false-negative       0.0500
+confidence-gated false-positive       0.1000
+
+oracle-motion cue accuracy            0.9750
+```
+
+The tracker receipt explains why:
+
+```text
+median minimum confidence, genuine      0.64925
+median minimum confidence, accidental   0.32217
+
+mean true-motion recovery, genuine      1.0000
+mean true-motion recovery, accidental   0.5583
+
+median RGB motion residual, genuine     0.0
+median RGB motion residual, accidental  0.0
+```
+
+So residual magnitude cannot distinguish the classes here. **Uncertainty about
+the correspondence can.**
+
+Every later contact remains exactly 32 steps:
+
+| policy | genuine merge | accidental false merge | balanced relation accuracy |
+|---|---:|---:|---:|
+| global cautious tau=96 | 0.000 | 0.000 | 0.500 |
+| always fast tau=16 | 0.850 | 0.767 | 0.542 |
+| residual-only fast/cautious | 0.850 | 0.733 | 0.558 |
+| **confidence-gated fast/cautious** | **0.800** | **0.050** | **0.875** |
+| shuffled confidence | 0.533 | 0.317 | 0.608 |
+
+The important comparison is not merely against always-fast. Global caution is
+perfectly safe too, but it merges **none** of the genuine relations at this
+timescale. Confidence lets the uncertainty stay local:
+
+> **a doubtful track slows its own relation without forcing every relation in
+> the system onto the slow clock.**
+
+Shuffling confidence largely removes the rescue, so confidence is not acting as
+a decorative extra parameter; it must remain attached to the correspondence
+that generated the common-fate claim.
+
+The current boundary is now about **uncertainty accumulation**. One low-confidence
+probe can veto fast admission, but a real system should recover when later
+evidence becomes clean rather than remaining cautious forever.
+
 ## Current picture
 
 ```text
@@ -814,13 +895,19 @@ RGB predictive relation admission
     |
     +-- estimated visual motion ---------------> matches oracle cue here
     +-- matched-duration contact --------------> 77% genuine / 3% accidental
+    |
+    v
+track-confidence admission
+    |
+    +-- look-alike / occlusion attacker -------> residual alone becomes unsafe
+    +-- local confidence veto -----------------> 80% genuine / 5% accidental
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> visual history can rewrite the operator and can also control how fast a new
-> relation is allowed to rewrite that address.**
+> visual history can control relation authority; and uncertainty can locally
+> slow only the correspondence that does not deserve fast authority yet.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -849,6 +936,7 @@ python gate11_contact_persistence.py --trials 5000
 python gate12_learned_relation_timescale.py --train-trials 3000 --test-trials 5000
 python gate13_predictive_relation_admission.py --train-trials 3000 --test-trials 5000
 python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200
+python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
 ```
 
 No SciPy or scikit-learn is required.
