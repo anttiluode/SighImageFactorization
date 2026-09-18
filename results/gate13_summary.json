@@ -1,0 +1,56 @@
+{
+  "gate": 13,
+  "title": "predictive relation admission from pre-contact common fate",
+  "reference_run": {
+    "train_trials": 3000,
+    "test_trials": 5000,
+    "dimension": 8,
+    "history_steps": 12,
+    "contact_steps": 32,
+    "training_sensor_noise": 0.15,
+    "shift_sensor_noise": 0.2,
+    "learned_residual_threshold": 0.1869848968590792,
+    "held_out_cue": {
+      "accuracy": 0.9922,
+      "balanced_error": 0.007948093339537316,
+      "genuine_prediction_rate": 0.9996076892899176,
+      "accidental_prediction_rate": 0.015503875968992248,
+      "median_genuine_residual": 0.08770843876867802,
+      "median_accidental_residual": 0.56926125920375
+    },
+    "policies": {
+      "age_only_tau64": {
+        "genuine_merge_fraction": 0.0007846214201647705,
+        "accidental_false_merge_fraction": 0.0004079967360261118,
+        "balanced_relation_accuracy": 0.5001883123420693
+      },
+      "always_fast_tau16": {
+        "genuine_merge_fraction": 0.8030600235386426,
+        "accidental_false_merge_fraction": 0.8078335373317014,
+        "balanced_relation_accuracy": 0.4976132431034706
+      },
+      "always_cautious_tau96": {
+        "genuine_merge_fraction": 0,
+        "accidental_false_merge_fraction": 0.0004079967360261118,
+        "balanced_relation_accuracy": 0.49979600163198695
+      },
+      "predictive_fast_or_cautious": {
+        "genuine_merge_fraction": 0.8026677128285602,
+        "accidental_false_merge_fraction": 0.013055895552835577,
+        "balanced_relation_accuracy": 0.8948059086378624
+      },
+      "shuffled_predictive_evidence": {
+        "genuine_merge_fraction": 0.4009415457041977,
+        "accidental_false_merge_fraction": 0.4239086087311302,
+        "balanced_relation_accuracy": 0.4885164684865338
+      }
+    },
+    "noise_shift": {
+      "cue_accuracy": 0.8624,
+      "genuine_merge_fraction": 0.5852976428286056,
+      "accidental_false_merge_fraction": 0.0016019223067681217,
+      "balanced_relation_accuracy": 0.7918478602609187
+    }
+  },
+  "boundary": "With matched contact duration, informative pre-contact common-fate history can route edges onto fast or cautious admission clocks and escape the age-only ambiguity. The gain disappears when the cue is shuffled and degrades under sensor-noise shift."
+}
