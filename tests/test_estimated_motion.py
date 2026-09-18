@@ -1,51 +1,47 @@
 import unittest
 import numpy as np
 
-from gate6_estimated_motion_write import (
-    TRAINING_EPISODES,
-    estimate_bidirectional_flow,
-    render_scene,
-    true_flow,
+from gate6_estimated_motion import (
+    TRAIN_POS1,
+    TRAIN_POS2,
+    collect_motion_examples,
+    estimate_flow,
+    make_motion_pair,
 )
 
 
 class EstimatedMotionTests(unittest.TestCase):
-    def test_local_correspondence_recovers_training_shift(self):
-        pos1, pos2, shift1, shift2, texture_seed = TRAINING_EPISODES[0]
+    def test_local_correspondence_recovers_object_motion(self):
+        frame0, frame1, truth, _, oracle = make_motion_pair(
+            TRAIN_POS1,
+            TRAIN_POS2,
+            seed=10000,
+        )
+        estimated, valid = estimate_flow(frame0, frame1)
 
-        frame0, labels0, _ = render_scene(
-            pos1,
-            pos2,
-            texture_seed=texture_seed,
-            sensor_seed=100,
-        )
-        frame1, _, _ = render_scene(
-            (pos1[0] + shift1[0], pos1[1] + shift1[1]),
-            (pos2[0] + shift2[0], pos2[1] + shift2[1]),
-            texture_seed=texture_seed,
-            sensor_seed=200,
-        )
-
-        estimated, confidence, fb_error = estimate_bidirectional_flow(
-            frame0, frame1
-        )
-        oracle = true_flow(labels0, (shift1, shift2))
-
-        valid_foreground = (
-            (labels0 > 0)
-            & (confidence > 0.3)
-            & (fb_error < 0.1)
-        )
+        moving = truth > 0
+        valid_moving = moving & valid
         exact = np.mean(
             np.all(
-                estimated[valid_foreground]
-                == oracle[valid_foreground],
+                estimated[valid_moving] == oracle[valid_moving],
                 axis=1,
             )
         )
 
-        self.assertGreater(valid_foreground.sum(), 100)
-        self.assertGreater(exact, 0.90)
+        self.assertGreater(np.mean(valid[moving]), 0.70)
+        self.assertGreater(exact, 0.95)
+
+    def test_estimated_motion_writes_positive_and_negative_evidence(self):
+        frame0, frame1, _, _, _ = make_motion_pair(
+            TRAIN_POS1,
+            TRAIN_POS2,
+            seed=10000,
+        )
+        estimated, valid = estimate_flow(frame0, frame1)
+        _, targets = collect_motion_examples(frame0, estimated, valid)
+
+        self.assertGreater(len(targets), 20)
+        self.assertEqual(set(np.unique(targets).tolist()), {0.0, 1.0})
 
 
 if __name__ == "__main__":
