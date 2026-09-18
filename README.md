@@ -629,6 +629,75 @@ That cue is the next thing to earn: motion consistency, appearance continuity,
 prediction error, consequence, or some learned local statistic must supply
 information that is absent from age itself.
 
+
+## Gate 13 — predictive relation admission
+
+Gate 12 proved that contact age alone cannot resolve two futures with an
+identical observed prefix. Gate 13 therefore adds information that exists
+**before contact**: short noisy common-fate history.
+
+Every test encounter has exactly the same **32-step same-motion contact**.
+Duration has no class information.
+
+Before contact, each candidate relation supplies twelve noisy local velocity
+samples. Genuine relations share one latent velocity process; accidental pairs
+have independent latent histories. The learner receives only
+
+```text
+mean_t ||v_a(t) - v_b(t)||^2
+```
+
+plus, during training only, the eventual merge/split outcome. A single threshold
+is learned from 3,000 previous encounters.
+
+Reference result:
+
+```text
+learned residual threshold             0.186985
+held-out cue accuracy                  0.9922
+genuine predicted genuine              0.99961
+accidental predicted genuine           0.01550
+```
+
+That prediction does not directly merge anything. It chooses which relation
+admission clock gets authority:
+
+```text
+predicted genuine       tau = 16
+predicted accidental    tau = 96
+Gate-12 age-only        tau = 64
+```
+
+On 5,000 held-out D=8 address pairs, all with the same 32-step contact:
+
+| policy | genuine merge | accidental false merge | balanced relation accuracy |
+|---|---:|---:|---:|
+| age-only tau=64 | 0.00078 | 0.00041 | 0.50019 |
+| always-fast tau=16 | 0.80306 | 0.80783 | 0.49761 |
+| always-cautious tau=96 | 0.00000 | 0.00041 | 0.49980 |
+| **predictive fast/cautious** | **0.80267** | **0.01306** | **0.89481** |
+| shuffled predictive cue | 0.40094 | 0.42391 | 0.48852 |
+
+This is the first gate in the lineage where the system can bind a likely genuine
+new relation **quickly** without paying the same merge rate on an equal-duration
+accidental contact.
+
+The shuffled attacker is decisive: merely owning a fast and a slow clock does
+not help. The advantage disappears when the learned pre-contact evidence is
+detached from the relation it describes.
+
+A sensor-noise shift from 0.15 to 0.20 reduces cue accuracy to **0.8624** and
+genuine early merging to **0.5853**, while accidental false merging stays low at
+**0.00160**. So the mechanism degrades rather than remaining magically robust.
+
+The new working boundary is:
+
+> **relation admission can be accelerated by predictive history, but its quality
+> is limited by the quality and transfer of that predictive observable.**
+
+This gate is still synthetic. It does not yet infer the cue from RGB video.
+That is now the obvious next attacker.
+
 ## Current picture
 
 ```text
@@ -661,13 +730,19 @@ persistent oscillator / vector address
 learned global admission timescale
     |
     +-- identical-prefix attacker -------------> age cannot predict relation fate
+    |
+    v
+predictive relation admission
+    |
+    +-- pre-contact common fate ---------------> fast vs cautious edge clock
+    +-- shuffled cue ---------------------------> advantage disappears
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> history can rewrite the operator; and relation admission needs predictive
-> evidence when age alone is causally ambiguous.**
+> history can rewrite the operator; and predictive history can control how fast
+> a new relation is allowed to rewrite that address.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -694,6 +769,7 @@ python gate9_emergent_phase_address.py --scenes 6
 python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
 python gate11_contact_persistence.py --trials 5000
 python gate12_learned_relation_timescale.py --train-trials 3000 --test-trials 5000
+python gate13_predictive_relation_admission.py --train-trials 3000 --test-trials 5000
 ```
 
 No SciPy or scikit-learn is required.
