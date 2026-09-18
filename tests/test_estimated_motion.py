@@ -1,41 +1,51 @@
 import unittest
-
 import numpy as np
 
 from gate6_estimated_motion_write import (
-    appearance_components,
-    estimate_component_translations,
+    TRAINING_EPISODES,
+    estimate_bidirectional_flow,
     render_scene,
+    true_flow,
 )
 
 
 class EstimatedMotionTests(unittest.TestCase):
-    def test_two_part_objects_form_five_appearance_regions(self):
-        frame, _, _ = render_scene((3, 2), (13, 14), seed=0)
-        components = appearance_components(frame)
-        self.assertEqual(len(np.unique(components)), 5)
+    def test_local_correspondence_recovers_training_shift(self):
+        pos1, pos2, shift1, shift2, texture_seed = TRAINING_EPISODES[0]
 
-    def test_rgb_only_component_translation_recovers_rigid_motion(self):
-        frame0, labels0, _ = render_scene((3, 2), (13, 14), seed=0)
-        frame1, _, _ = render_scene((3, 3), (13, 13), seed=1)
-        components = appearance_components(frame0)
-        motions, confidences = estimate_component_translations(
-            frame0, frame1, components
+        frame0, labels0, _ = render_scene(
+            pos1,
+            pos2,
+            texture_seed=texture_seed,
+            sensor_seed=100,
+        )
+        frame1, _, _ = render_scene(
+            (pos1[0] + shift1[0], pos1[1] + shift1[1]),
+            (pos2[0] + shift2[0], pos2[1] + shift2[1]),
+            texture_seed=texture_seed,
+            sensor_seed=200,
         )
 
-        for comp in np.unique(components):
-            comp = int(comp)
-            owners = labels0[components == comp]
-            values, counts = np.unique(owners, return_counts=True)
-            owner = int(values[np.argmax(counts)])
-            if owner == 1:
-                self.assertEqual(motions[comp], (0, 1))
-                self.assertGreater(confidences[comp], 0.9)
-            elif owner == 2:
-                self.assertEqual(motions[comp], (0, -1))
-                self.assertGreater(confidences[comp], 0.9)
-            else:
-                self.assertEqual(motions[comp], (0, 0))
+        estimated, confidence, fb_error = estimate_bidirectional_flow(
+            frame0, frame1
+        )
+        oracle = true_flow(labels0, (shift1, shift2))
+
+        valid_foreground = (
+            (labels0 > 0)
+            & (confidence > 0.3)
+            & (fb_error < 0.1)
+        )
+        exact = np.mean(
+            np.all(
+                estimated[valid_foreground]
+                == oracle[valid_foreground],
+                axis=1,
+            )
+        )
+
+        self.assertGreater(valid_foreground.sum(), 100)
+        self.assertGreater(exact, 0.90)
 
 
 if __name__ == "__main__":
