@@ -638,34 +638,39 @@ SighImageSuper
     v
 exact residue trajectory
     |
-    +-- global PCA / ICA ----------------------> boundary: no magic objects
+    +-- global PCA / ICA ----------------------> boundary: linear coordinates
     |
     v
 input-derived affinity operator
     |
-    +-- linear diffusion
-    +-- vector synchrony ----------------------> same graph, same answer
+    +-- diffusion vs synchrony ----------------> same graph, same grouping
     |
     v
 common fate writes persistent affinity
     |
+    +-- RGB-only correspondence ---------------> oracle motion removed
+    +-- occlusion / relational bridge ---------> nonlocal identity boundary
+    |
     v
-later static grouping at a new location
+persistent oscillator / vector address
+    |
+    +-- local-only synchronization ------------> dimension = address capacity
+    +-- temporary contact ---------------------> relation admission needs time
+    |
+    v
+learned global admission timescale
+    |
+    +-- identical-prefix attacker -------------> age cannot predict relation fate
 ```
 
-The new working hypothesis is no longer
+The working hypothesis is now:
 
-> residue time itself is the object space.
+> **the operator creates the grouping; local dynamics create an instance address;
+> history can rewrite the operator; and relation admission needs predictive
+> evidence when age alone is causally ambiguous.**
 
-It is:
-
-> **the operator creates the grouping; the residue records the grouping
-> trajectory; history can rewrite the operator.**
-
-The next gate should remove one piece of scaffolding at a time: replace
-discrete appearance types with continuous local features, replace oracle motion
-with estimated correspondence/flow, then ask whether the learned operator
-survives clutter, occlusion and novel arrangements.
+Residues remain useful as an exact trajectory microscope, but they are no longer
+being asked to manufacture objects by themselves.
 
 ## Requirements
 
@@ -686,7 +691,9 @@ python gate6_estimated_motion_write.py --test-scenes 6
 python gate7_occlusion_relational_bridge.py --scenes 6
 python gate8_persistent_phase_address.py --scenes 6
 python gate9_emergent_phase_address.py --scenes 6
-python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000\npython gate11_contact_persistence.py --trials 5000
+python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
+python gate11_contact_persistence.py --trials 5000
+python gate12_learned_relation_timescale.py --train-trials 3000 --test-trials 5000
 ```
 
 No SciPy or scikit-learn is required.
