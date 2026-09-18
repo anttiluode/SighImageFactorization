@@ -243,6 +243,58 @@ This sharply motivates the next variable: an instance-specific persistent
 address—phase, oscillator orientation, slot identity, track state, or an
 equivalent dynamical code.
 
+## Gate 8: phase becomes an instance address
+
+Gate 7's failure was not that the learned part relation was wrong. It was that
+the same correct relation could apply to multiple nearby object instances.
+
+Gate 8 therefore adds one extra state variable per discovered moving instance:
+an arbitrary 2-D unit vector (phase-like address).
+
+The attacker is deliberately strong: **both objects move with the same
+velocity**, so velocity itself cannot label them.
+
+The first implementation failed because boundary ownership changes caused the
+large background component to inherit the objects' apparent translation. The
+motion estimator was changed to score eroded region interiors with a median
+photometric loss. The second implementation failed because a confidence
+threshold omitted correctly moving parts; confidence is now diagnostic only,
+while the single largest appearance region is explicitly treated as the
+current substrate/reference.
+
+With those estimator confounds removed, local common-fate connectivity
+discovers two disconnected moving groups in every tested scene. Each gets a
+different unit-vector address, which is carried forward after motion stops.
+
+Six-scene CI result:
+
+| condition | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.97992 | 6 | 1.667 | 0 / 6 |
+| relation only | 0.95829 | 3 | 1.000 | **6 / 6** |
+| **persistent phase** | **1.00000** | **4** | **1.000** | **0 / 6** |
+| collapsed phase | 0.95829 | 3 | 1.000 | **6 / 6** |
+| reset phase | 0.97992 | 6 | 1.667 | 0 / 6 |
+
+The intervention is unusually clean:
+
+- **collapse all phases** -> generic relation cross-binding returns;
+- **reset phase at the stop** -> objects fragment;
+- **preserve distinct phase** -> correct binding survives occlusion.
+
+So the role of phase is now sharply different from Gate 3:
+
+[
+\boxed{
+\text{phase is not the grouping solver; phase carries instance identity}
+}
+]
+
+The experiment does not establish phase as the unique representation. A slot,
+track, persistent vector, or another address could substitute. It establishes
+that generic learned relations need an instance-specific persistent variable
+when several compatible instances coexist.
+
 ## Next attacker
 
 Remove the scaffolding in order:

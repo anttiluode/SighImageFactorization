@@ -346,6 +346,61 @@ diffusion solver (Gate 3 says it was not), but because **relative phase/state ca
 serve as an instance-binding address while generic feature relations remain
 shared**.
 
+## Gate 8 — persistent phase is useful as an instance address
+
+Gate 3 already showed that vector synchrony is **not** a better solver for a
+fixed grouping graph. Gate 7 showed a different missing variable: a generic
+learned part relation can be correct while still binding the wrong object
+instance.
+
+`gate8_persistent_phase_address.py` isolates that role.
+
+Two separate objects are deliberately given the **same velocity** and share
+the same generic learned part relations. Velocity therefore cannot be the
+identity. Robust RGB region correspondence finds the moving appearance
+components, and local common-fate connectivity separates them into two
+disconnected instance groups.
+
+Each group receives an arbitrary 2-D unit-vector address on the circle. That
+address is carried with the object into the next frame. The objects then stop,
+occlusion removes direct part contact, and a learned nonlocal relation is
+allowed to bridge only when both visible regions also carry the same address.
+
+A first attempt failed because mean region matching gave the huge background
+region the same apparent translation as the moving objects. Replacing that with
+interior-pixel, median photometric matching removed boundary-ownership
+contamination. A second attempt exposed another conflation: using an arbitrary
+confidence threshold to decide object membership omitted correctly moving
+parts. The final gate treats the largest appearance region explicitly as the
+current substrate/reference and lets non-zero robust displacement, not a
+confidence cutoff, define moving candidates.
+
+Six-scene GitHub Actions result:
+
+| mechanism | median ARI | components | fragmentation | collision scenes |
+|---|---:|---:|---:|---:|
+| local memory | 0.980 | 6 | 1.667 | 0 / 6 |
+| relation only | 0.958 | 3 | 1.000 | **6 / 6** |
+| **persistent phase** | **1.000** | **4** | **1.000** | **0 / 6** |
+| collapsed phase | 0.958 | 3 | 1.000 | **6 / 6** |
+| reset phase | 0.980 | 6 | 1.667 | 0 / 6 |
+
+The two discovered instance groups are present in every tested scene.
+
+This is the first gate where phase has a specifically demonstrated function:
+
+[
+\boxed{\text{phase-like persistent state} = \text{instance address}}
+]
+
+Collapse the addresses and the old cross-binding error returns. Remove the
+addresses when motion stops and the object fragments again.
+
+This is **not** yet an AKOrN reproduction or evidence that biological phase is
+the unique solution. A slot, track ID, persistent vector, or another dynamical
+address could play the same abstract role. What the gate establishes is the
+need for an instance-specific state variable beyond generic feature relations.
+
 ## Current picture
 
 ```text
