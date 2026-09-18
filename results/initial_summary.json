@@ -1,0 +1,39 @@
+{
+  "gate0": {
+    "grid": [32, 32],
+    "depth": 12,
+    "relative_reconstruction_error": 1.643697742865278e-16
+  },
+  "gate1": {
+    "grid": [16, 16],
+    "depth": 8,
+    "samples_per_seed": 256,
+    "seeds": 3,
+    "clean_median": {
+      "raw_pixels": 0.9903007185350649,
+      "orthogonal_redundant": 0.9903038367209506,
+      "matched_spectrum_random": 0.990306585394284,
+      "sigh_residue": 0.9903048003334302
+    },
+    "attacked_median": {
+      "raw_pixels": 0.937949917010863,
+      "orthogonal_redundant": 0.9379484102012242,
+      "matched_spectrum_random": 0.942305285380939,
+      "sigh_residue": 0.6719473725861568
+    },
+    "attacked_sigh_minus_raw_median": -0.2660025444247063,
+    "attacked_sigh_minus_matched_random_median": -0.2703579127947823
+  },
+  "gate2": {
+    "frame_eigenvalue_min": 0.13799846290524712,
+    "frame_eigenvalue_max": 0.9999999999999997,
+    "frame_condition_number": 7.24645752530318,
+    "source_norm_gain_in_raw_residue_space": [
+      0.9941682206794533,
+      0.9861274325482163,
+      0.6823973290025169
+    ],
+    "tight_frame_identity_operator_error": 8.550996727051285e-15,
+    "raw_vs_tight_nonzero_singular_spectrum_relative_error": 1.2552207061464152e-15
+  }
+}
