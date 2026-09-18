@@ -698,6 +698,78 @@ The new working boundary is:
 This gate is still synthetic. It does not yet infer the cue from RGB video.
 That is now the obvious next attacker.
 
+
+## Gate 14 — predictive evidence comes from RGB history
+
+Gate 13 still received a generated velocity-history residual. Gate 14 removes
+that direct motion input and reuses the RGB correspondence machinery introduced
+in Gate 6.
+
+Each candidate relation is observed for four pre-contact frame transitions.
+Every frame contains two small textured foreground regions plus a textured
+background. The learner receives only noisy RGB.
+
+For each consecutive frame pair:
+
+```text
+RGB
+ -> appearance-connected regions
+ -> local template-match translation estimate
+ -> confidence
+```
+
+The two candidate foreground regions then produce
+
+```text
+e_rgb = mean_t ||vhat_a(t) - vhat_b(t)||^2
+```
+
+and one threshold is learned from past outcomes. True velocities are used only
+for an oracle upper-bound measurement.
+
+The accidental class is deliberately ambiguous: at each pre-contact step it
+copies the partner's motion with probability 0.5. Some accidental relations
+therefore have exactly the same observable four-step common-fate history as a
+genuine relation.
+
+CI reference, **120 training / 200 held-out histories**:
+
+```text
+learned RGB threshold              0.0
+RGB cue accuracy                   0.975
+oracle-motion cue accuracy         0.975
+RGB false-negative rate            0.000
+RGB false-positive rate            0.050
+mean translation confidence        0.99598
+valid estimated transitions        1.000
+```
+
+The equality with the oracle is important. In this controlled image world the
+remaining 5% cue error is not caused by motion estimation; it is ambiguity in
+the observed history itself.
+
+Every later contact is still exactly **32 steps**.
+
+| policy | genuine merge | accidental false merge | balanced relation accuracy |
+|---|---:|---:|---:|
+| age-only tau=64 | 0.000 | 0.000 | 0.500 |
+| always-fast tau=16 | 0.770 | 0.780 | 0.495 |
+| **RGB-predictive fast/cautious** | **0.770** | **0.030** | **0.870** |
+| shuffled RGB cue | 0.420 | 0.410 | 0.505 |
+
+So the predictive mechanism has now moved back into the image/world loop:
+
+> **visual history can decide how quickly a new relation is allowed to rewrite
+> an established instance address.**
+
+Shuffling the image-derived cue removes the benefit, while the always-fast
+control shows why prediction is needed at all.
+
+This still uses easy foreground-region discovery and stable local texture. The
+next useful attacker is no longer “can RGB supply motion?” It is whether the
+predictive relation survives **appearance ambiguity, partial occlusion, and
+track uncertainty** without relying on clean pre-segmented regions.
+
 ## Current picture
 
 ```text
@@ -736,13 +808,19 @@ predictive relation admission
     |
     +-- pre-contact common fate ---------------> fast vs cautious edge clock
     +-- shuffled cue ---------------------------> advantage disappears
+    |
+    v
+RGB predictive relation admission
+    |
+    +-- estimated visual motion ---------------> matches oracle cue here
+    +-- matched-duration contact --------------> 77% genuine / 3% accidental
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> history can rewrite the operator; and predictive history can control how fast
-> a new relation is allowed to rewrite that address.**
+> visual history can rewrite the operator and can also control how fast a new
+> relation is allowed to rewrite that address.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -770,6 +848,7 @@ python gate10_local_vector_address.py --scenes 12 --capacity-trials 20000
 python gate11_contact_persistence.py --trials 5000
 python gate12_learned_relation_timescale.py --train-trials 3000 --test-trials 5000
 python gate13_predictive_relation_admission.py --train-trials 3000 --test-trials 5000
+python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200
 ```
 
 No SciPy or scikit-learn is required.

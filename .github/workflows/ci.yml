@@ -31,3 +31,4 @@ jobs:
       - run: python gate11_contact_persistence.py --trials 2000
       - run: python gate12_learned_relation_timescale.py --train-trials 1200 --test-trials 2000
       - run: python gate13_predictive_relation_admission.py --train-trials 1200 --test-trials 2000
+      - run: python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200

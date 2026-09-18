@@ -637,15 +637,77 @@ New boundary:
 }
 ]
 
+## Gate 14: RGB history supplies the predictive cue
+
+Gate 13's predictor still consumed generated velocity histories. Gate 14 removes
+that input.
+
+The learner sees only four consecutive noisy RGB transitions before contact.
+Gate 6's appearance-region/template-matching estimator supplies one translation
+per visible foreground region. The local predictive statistic is
+
+[
+e_{rgb}=\frac{1}{T}\sum_t ||\hat v_a(t)-\hat v_b(t)||^2.
+]
+
+Training outcome labels are used only to choose one threshold on this scalar.
+
+The accidental class copies the partner's motion independently with probability
+0.5 at each pre-contact step, so an accidental relation can genuinely look
+coherent for all four observations.
+
+CI reference with 120 training and 200 held-out histories:
+
+```text
+learned RGB threshold              0.0
+training balanced cue error        0.00833
+
+held-out RGB cue accuracy          0.975
+held-out oracle cue accuracy       0.975
+RGB false-negative rate            0.000
+RGB false-positive rate            0.050
+
+mean estimator confidence          0.995981
+mean valid-transition fraction     1.000
+```
+
+In this controlled world RGB correspondence reaches the oracle-motion ceiling.
+The residual 5% error is therefore observational ambiguity, not motion-estimator
+error.
+
+All later contacts remain exactly 32 steps:
+
+| policy | genuine merge | accidental merge | balanced accuracy |
+|---|---:|---:|---:|
+| age-only tau=64 | 0.000 | 0.000 | 0.500 |
+| always-fast tau=16 | 0.770 | 0.780 | 0.495 |
+| **RGB predictive clock** | **0.770** | **0.030** | **0.870** |
+| shuffled RGB cue | 0.420 | 0.410 | 0.505 |
+
+The mechanism therefore survives removal of direct velocity input.
+
+[
+\boxed{
+\text{RGB history}
+\rightarrow
+\text{estimated common fate}
+\rightarrow
+\text{relation clock}
+\rightarrow
+\text{faster selective binding}
+}
+]
+
+This also sharpens the next limitation. Gate 14 intentionally makes appearance
+regions easy to recover and keeps their texture stable.
+
 ## Next attacker
 
-Remove the synthetic velocity-history statistic. Feed the relation learner only
-consecutive noisy RGB frames, derive its predictive evidence from the same
-estimated correspondence machinery introduced in Gate 6, and ask whether that
-image-derived confidence can control admission better than age alone.
+Attack the **track itself**. Use visually similar foreground regions, partial
+occlusion, and appearance changes so that local RGB correspondence becomes
+uncertain. Relation admission should then depend on calibrated track confidence
+or prediction error rather than a clean region identity.
 
-The key control should remain matched duration: two contacts last equally long,
-but only one has a coherent pre-contact visual trajectory. If RGB-derived
-history still selects the right clock, the predictive mechanism has moved back
-into the actual image/world loop.
+The important question is whether uncertainty can slow only the doubtful edge
+without globally slowing every relation back to Gate 12's age-only behavior.
 
