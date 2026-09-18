@@ -485,11 +485,75 @@ Gate 11 adds:
 This is the first point in the lineage where the *age of an edge* matters
 independently of its instantaneous evidence.
 
+## Gate 12: learn the relation timescale
+
+Gate 11's `tau=64` was a hand-written protection timescale. Gate 12 turns that
+number into an empirical model-selection problem.
+
+Training uses 3,000 independent D=8 address pairs and seven encounter lengths:
+
+```text
+transient:   8, 16, 24, 32
+persistent: 64, 96, 128
+```
+
+Nine candidate timescales compete by minimizing the sum of transient false
+merges and persistent failures to merge. The selected value is:
+
+```text
+learned tau = 64
+```
+
+On 5,000 held-out address pairs:
+
+```text
+mean transient false-merge rate    0.00015
+mean persistent non-merge rate     0.00000
+```
+
+So the timescale itself can be selected from prior encounter statistics rather
+than fixed by the experimenter.
+
+### Identical-prefix attacker
+
+Now construct two futures that are causally identical for 48 contact steps.
+
+```text
+A: the relation ends at step 48
+B: the relation continues after step 48
+```
+
+At step 48, any policy that receives only relation age has the same input
+history and therefore the same internal state in A and B. In the reference run,
+the learned rule has already merged **40.12%** of address pairs.
+
+That single number has opposite meanings:
+
+```text
+A: 40.12% false merge
+B: 40.12% early-merge success
+```
+
+On balanced A/B pairs, an age-only decision is therefore exactly **50%**
+accurate about the future relation label. Tuning tau cannot remove this
+ambiguity; it only moves the point on the caution/latency tradeoff.
+
+New boundary:
+
+[
+\boxed{
+\text{learned caution is possible}
+\quad\text{but}\quad
+\text{age alone cannot predict relation fate}
+}
+]
+
 ## Next attacker
 
-Move the eligibility state back into the full image/world loop. The remaining
-hand-written quantity is the relation timescale itself. The next useful question
-is whether the system can learn how quickly a new relation deserves authority
-from prediction error / repeated evidence, and whether that learned timescale
-survives real merge-split events.
+Give relation admission a predictive observable that can differ *before* the
+merge/split outcome is known. The cleanest next gate is to let local prediction
+error or motion/appearance consistency modulate edge eligibility, then compare
+it against the learned age-only rule on matched identical-duration encounters.
+If the predictive rule wins, it has earned faster binding rather than merely a
+different global delay.
 
