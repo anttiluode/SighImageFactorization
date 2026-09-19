@@ -1060,6 +1060,99 @@ This does **not** invalidate Gate 16. Memory still determines a useful local
 safety/latency trade-off. Gate 17 says that tuning that memory cannot manufacture
 an observable that is absent from the history.
 
+
+## Gate 18 — motion surprise escapes the Gate-17 boundary
+
+Gate 17 proved that no temporal state can infer two different futures from the
+same evidence prefix. Gate 18 therefore does **not** add another memory
+timescale. It asks whether the RGB correspondence already contains useful
+information that the previous relation representation threw away.
+
+The old admission representation keeps only:
+
+```text
+do the two candidates move together?
+is that correspondence confident?
+```
+
+Once common fate is established, it discards the **absolute shared motion
+vector**.
+
+Gate 18 conditions every accepted pre-relapse history so the old decision bit is
+identical:
+
+```text
+common-fate residual = 0
+minimum confidence   >= 0.95
+ordinary admission   = TRUE
+```
+
+for **every observation in both classes**.
+
+The two foreground regions always move together and all allowed translations
+have equal speed. The only class-dependent signal is directional stability:
+
+```text
+stable future:
+    shared direction usually persists
+
+future relapse:
+    shared direction becomes unstable before ordinary confidence fails
+```
+
+From RGB-estimated translations the new local observable is
+
+```text
+motion surprise = mean_t ||vhat_t - vhat_(t-1)||^2
+```
+
+where `vhat_t` is the mean translation of the two candidates.
+
+CI reference, **120 training / 240 held-out trials**:
+
+```text
+old admission bit TRUE fraction       1.0000
+minimum tracker confidence             0.9931
+maximum common-fate residual           0.0000
+tracker motion accuracy                1.0000
+
+learned RGB surprise threshold         0.0000
+median stable RGB surprise             0.0000
+median future-relapse surprise         1.0000
+```
+
+Held-out cue result:
+
+| cue | accuracy | false negative | false positive |
+|---|---:|---:|---:|
+| matched old admission | 0.5000 | 0.0000 | 1.0000 |
+| **RGB motion surprise** | **0.9042** | **0.1583** | **0.0333** |
+| oracle motion surprise | 0.9042 | 0.1583 | 0.0333 |
+| shuffled RGB surprise | 0.4542 | 0.6083 | 0.4833 |
+
+RGB reaches the oracle-motion ceiling here. The remaining error comes from the
+stochastic overlap intentionally built into stable and pre-relapse trajectory
+statistics, not from motion estimation.
+
+The downstream D=8 relation clock makes the consequence concrete:
+
+| policy | stable/genuine merge | future-relapse false merge | balanced relation accuracy |
+|---|---:|---:|---:|
+| old matched admission / fast | 0.8500 | 0.8000 | 0.5250 |
+| **RGB-surprise fast/cautious** | **0.7250** | **0.0167** | **0.8542** |
+| shuffled surprise | 0.3417 | 0.3583 | 0.4917 |
+| global cautious | 0.0000 | 0.0000 | 0.5000 |
+
+This is the clean escape from Gate 17:
+
+> **when history is insufficient, adding memory does not help; adding a genuinely
+> informative observable can.**
+
+Nothing magical happened at the boundary. Gate 17 said the represented evidence
+was missing information. Gate 18 keeps the same RGB input but preserves one more
+part of it—the shared trajectory—and the prediction becomes possible before the
+ordinary confidence/common-fate representation changes.
+
 ## Current picture
 
 ```text
@@ -1123,14 +1216,21 @@ false-clean identical-prefix boundary
     |
     +-- same prefix / opposite futures -------> every causal state identical
     +-- first new RGB evidence ---------------> prediction returns at 99.375%
+    |
+    v
+motion-surprise predictive cue
+    |
+    +-- old admission bit matched ------------> remains at chance
+    +-- preserve shared trajectory -----------> 90.4% future classification
+    +-- shuffled trajectory cue --------------> advantage disappears
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> visual history controls relation authority; uncertainty can withdraw and later
-> restore that authority; but temporal memory cannot infer a future that is not
-> yet observable in the evidence.**
+> visual history controls relation authority; memory handles uncertainty, but
+> prediction improves only when the representation preserves an observable that
+> actually carries information about what comes next.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -1162,6 +1262,7 @@ python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-tri
 python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
 python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
 python gate17_false_clean_identical_prefix.py --train-pairs 40 --test-pairs 80
+python gate18_motion_surprise_predictive_cue.py --train-trials 120 --test-trials 240
 ```
 
 No SciPy or scikit-learn is required.
