@@ -947,23 +947,118 @@ Separate attack and recovery constants may still be useful engineering knobs,
 but no prefix-only temporal mechanism can decide whether a currently identical
 recovery streak will persist.
 
+## Gate 18: new observability beats better memory
+
+Gate 17's negative result was conditional on an identical observed prefix.
+Gate 18 adds candidate observables from inside the RGB correspondence process.
+
+During a four-observation clean-looking recovery streak, both candidates still
+move together and remain high-confidence. The only designed precursor is the
+stability of their shared motion:
+
+```text
+stable recovery:       switch probability 0.10
+relapse-prone recovery: switch probability 0.70
+```
+
+The candidate measurements are:
+
+```text
+absolute reconstruction error
+absolute template margin
+forward/backward cycle error
+short-horizon motion surprise
+```
+
+A threshold is learned for each on 40 training pairs. Candidate choice is made
+only on 30 validation pairs.
+
+Validation accuracy:
+
+```text
+reconstruction error       0.5000
+absolute margin            0.5500
+cycle error                0.5000
+motion surprise            0.8333
+```
+
+The validation-selected cue is **motion surprise**.
+
+On 80 untouched pairs:
+
+| signal | balanced accuracy |
+|---|---:|
+| raw ordinary state | 0.48125 |
+| cumulative ordinary state | 0.51250 |
+| symmetric ordinary state | 0.51875 |
+| asymmetric ordinary state | 0.50000 |
+| mean confidence | 0.50000 |
+| min confidence | 0.48125 |
+| reconstruction error | 0.50625 |
+| absolute margin | 0.52500 |
+| cycle error | 0.50000 |
+| **motion surprise** | **0.90625** |
+| shuffled surprise | 0.51875 |
+
+The confidence channel itself is matched extremely closely:
+
+```text
+stable median mean confidence          0.99617744
+relapse-prone median mean confidence   0.99619517
+```
+
+but the selected new observable is not:
+
+```text
+stable median surprise                 0.000000
+relapse-prone median surprise          1.333333
+```
+
+The authority receipt makes the difference operational:
+
+```text
+                             stable fast    relapse false-fast
+Gate-16 symmetric memory        1.000             1.000
+Gate-16 asymmetric memory       1.000             1.000
+Gate-18 predictive cue          0.925             0.1125
+```
+
+So after the same number of clean-looking recovery observations, both Gate-16
+memory rules have restored fast authority to every world. Motion surprise keeps
+most relapse-prone relations cautious while restoring most stable relations.
+
+The shuffled control removes the effect, and the other local match diagnostics
+remain near chance.
+
+This is exactly the distinction Gate 17 demanded:
+
+[
+\boxed{
+\text{better memory cannot create missing information}
+\quad\text{but}\quad
+\text{a genuinely new observable can}
+}
+]
+
+There is an important scope limit. Gate 18 **deliberately defines** a world in
+which elevated motion instability precedes relapse. The gate shows that an
+RGB-derived predictor can exploit that contingency. It does not establish that
+motion surprise universally predicts failure in other worlds.
+
 ## Next attacker
 
-Gate 17 tells us exactly what would be required to beat chance **before** the
-relapse: a new observable that differs while ordinary confidence/common-fate
-history is still identical.
+Attack the predictor's **causal portability**, not its threshold.
 
-The next gate should therefore keep the Gate-17 confidence prefix matched and
-add a second local predictive measurement from the correspondence itself, such
-as:
+Train on the Gate-18 relationship between motion instability and relapse, then
+change the world in three ways:
 
-- forward/backward match consistency,
-- best-vs-second-best template margin,
-- local reconstruction/prediction residual,
-- or short-horizon motion-model surprise.
+1. preserve the relationship but change the motion vocabulary / sensor noise;
+2. weaken the relationship continuously rather than using 0.10 versus 0.70;
+3. explicitly **break or reverse the relationship** between motion surprise and
+   relapse.
 
-The crucial attacker is a shuffled-cue control. If one of those measurements
-separates stable recovery from false-clean relapse *before* the ordinary
-confidence trace diverges, it has earned predictive authority. If none does, the
-correct action is simply to accept the latency established by Gate 17.
+A useful predictive mechanism should transfer when the causal contingency
+survives, degrade as the contingency weakens, and fail honestly when the
+relationship is removed or reversed. That would separate a reusable observable
+from a synthetic shortcut.
 

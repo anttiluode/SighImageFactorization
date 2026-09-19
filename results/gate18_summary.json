@@ -1,0 +1,65 @@
+{
+  "gate": 18,
+  "title": "pre-relapse predictive observable beyond confidence memory",
+  "ci_reference": {
+    "train_pairs": 40,
+    "validation_pairs": 30,
+    "test_pairs": 80,
+    "pre_clear_observations": 4,
+    "attack_observations": 3,
+    "recovery_observations": 4,
+    "stable_switch_probability": 0.1,
+    "relapse_switch_probability": 0.7,
+    "selected_predictive_cue": "motion_surprise",
+    "validation_balanced_accuracy": {
+      "raw_state": 0.5166666666666666,
+      "cumulative_state": 0.5,
+      "symmetric_state": 0.5,
+      "asymmetric_state": 0.5,
+      "mean_confidence": 0.4833333333333333,
+      "min_confidence": 0.4666666666666667,
+      "match_error": 0.5,
+      "absolute_margin": 0.55,
+      "cycle_error": 0.5,
+      "motion_surprise": 0.8333333333333333
+    },
+    "held_out_balanced_accuracy": {
+      "raw_state": 0.48124999999999996,
+      "cumulative_state": 0.5125,
+      "symmetric_state": 0.51875,
+      "asymmetric_state": 0.5,
+      "mean_confidence": 0.5,
+      "min_confidence": 0.48125,
+      "match_error": 0.50625,
+      "absolute_margin": 0.525,
+      "cycle_error": 0.5,
+      "motion_surprise": 0.90625,
+      "shuffled_motion_surprise": 0.51875
+    },
+    "reauthorization_at_split": {
+      "gate16_symmetric": {
+        "stable_fast_fraction": 1,
+        "relapse_false_fast_fraction": 1
+      },
+      "gate16_asymmetric": {
+        "stable_fast_fraction": 1,
+        "relapse_false_fast_fraction": 1
+      },
+      "predictive_motion_surprise": {
+        "stable_fast_fraction": 0.925,
+        "relapse_false_fast_fraction": 0.1125
+      }
+    },
+    "recovery_receipt": {
+      "median_stable_motion_surprise": 0,
+      "median_relapse_motion_surprise": 1.3333333333333333,
+      "median_stable_mean_confidence": 0.9961774425470358,
+      "median_relapse_mean_confidence": 0.9961951684222742
+    },
+    "first_post_split_receipt": {
+      "median_stable_target": 0.9962370564160392,
+      "median_relapse_target": 0.6742499468803251
+    }
+  },
+  "boundary": "Gate 17 remains valid for exactly identical observations. Gate 18 deliberately introduces a real pre-relapse precursor: unstable shared motion. RGB-derived short-horizon motion surprise exploits that new information while ordinary confidence memory remains at chance. The next boundary is whether the predictor transfers when the instability/relapse contingency changes."
+}

@@ -35,3 +35,4 @@ jobs:
       - run: python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
       - run: python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
       - run: python gate17_false_clean_identical_prefix.py --train-pairs 40 --test-pairs 80
+      - run: python gate18_pre_relapse_predictive_cue.py --train-pairs 40 --validation-pairs 30 --test-pairs 80
