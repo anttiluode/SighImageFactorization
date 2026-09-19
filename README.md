@@ -1060,6 +1060,96 @@ This does **not** invalidate Gate 16. Memory still determines a useful local
 safety/latency trade-off. Gate 17 says that tuning that memory cannot manufacture
 an observable that is absent from the history.
 
+
+## Gate 18 — a new observable breaks the Gate-17 boundary
+
+Gate 17 showed that temporal memory cannot predict two futures behind an
+**identical ordinary evidence history**. Gate 18 therefore changes the question:
+does the correspondence process expose another local observable *before* the
+ordinary confidence/common-fate trace diverges?
+
+The recovery interval remains clean common fate in both classes. A and B move
+together on every observation and template confidence stays near 0.996. The
+difference is only the stability of their **shared estimated motion**:
+
+```text
+stable recovery:
+    switch shared motion direction with p = 0.10 per observation
+
+relapse-prone recovery:
+    switch shared motion direction with p = 0.70 per observation
+```
+
+Four RGB-derived diagnostics compete:
+
+- absolute template reconstruction error,
+- absolute best-vs-second-best margin,
+- forward/backward cycle inconsistency,
+- short-horizon motion-model surprise.
+
+Thresholds are learned on 40 training pairs. Cue selection is frozen on 30
+validation pairs, then evaluated on **80 untouched pairs**.
+
+Validation selects **motion-model surprise**.
+
+Held-out balanced accuracy:
+
+| observable/state | accuracy |
+|---|---:|
+| Gate-17 raw state | 0.48125 |
+| cumulative state | 0.51250 |
+| symmetric EMA state | 0.51875 |
+| asymmetric eligibility state | 0.50000 |
+| mean confidence | 0.50000 |
+| minimum confidence | 0.48125 |
+| template reconstruction error | 0.50625 |
+| absolute template margin | 0.52500 |
+| forward/backward cycle error | 0.50000 |
+| **motion-model surprise** | **0.90625** |
+| shuffled motion surprise | 0.51875 |
+
+The ordinary confidence channel is effectively matched:
+
+```text
+median recovery confidence, stable          0.996177
+median recovery confidence, relapse-prone  0.996195
+```
+
+while the selected cue separates the histories:
+
+```text
+median motion surprise, stable              0.000000
+median motion surprise, relapse-prone       1.333333
+```
+
+The causal consequence is visible in relation authority. After four
+clean-looking recovery observations:
+
+| policy | stable fast | relapse-prone false-fast |
+|---|---:|---:|
+| Gate-16 symmetric memory | 1.000 | 1.000 |
+| Gate-16 asymmetric memory | 1.000 | 1.000 |
+| **Gate-18 predictive cue** | **0.925** | **0.1125** |
+
+So the new observable does something no amount of smoothing of the old evidence
+could do: it keeps most instability-marked relations cautious **before** the
+relapse itself, while restoring fast authority for most stable relations.
+
+This does not contradict Gate 17. Gate 17's paired worlds were exactly
+observationally identical, so prediction was impossible. Gate 18 deliberately
+gives the world a real precursor and asks whether the system can extract it from
+RGB-derived motion.
+
+The strongest justified statement is:
+
+> **memory determines how evidence is accumulated; prediction requires an
+> observable that actually carries information about what comes next.**
+
+This is still a synthetic contingency. The experiment deliberately makes motion
+instability predictive of relapse. It does **not** establish that motion surprise
+is a universal predictor of tracking failure or object identity in natural
+video.
+
 ## Current picture
 
 ```text
@@ -1123,14 +1213,21 @@ false-clean identical-prefix boundary
     |
     +-- same prefix / opposite futures -------> every causal state identical
     +-- first new RGB evidence ---------------> prediction returns at 99.375%
+    |
+    v
+pre-relapse predictive observable
+    |
+    +-- confidence remains matched -----------> old temporal states stay at chance
+    +-- motion surprise ----------------------> 90.625% future classification
+    +-- shuffled surprise --------------------> advantage collapses
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> visual history controls relation authority; uncertainty can withdraw and later
-> restore that authority; but temporal memory cannot infer a future that is not
-> yet observable in the evidence.**
+> visual history controls relation authority; memory determines how evidence is
+> accumulated; and prediction becomes possible only when a local observable
+> actually contains information about the future.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -1162,6 +1259,7 @@ python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-tri
 python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
 python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
 python gate17_false_clean_identical_prefix.py --train-pairs 40 --test-pairs 80
+python gate18_pre_relapse_predictive_cue.py --train-pairs 40 --validation-pairs 30 --test-pairs 80
 ```
 
 No SciPy or scikit-learn is required.
