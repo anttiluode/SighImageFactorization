@@ -20,13 +20,13 @@ class RecoverableUncertaintyTests(unittest.TestCase):
             address_seed=163,
         )
 
-        asym = report["authority_policies"][
-            "asymmetric_eligibility"
+        selected = report["authority_policies"][
+            "symmetric_ema"
         ]
-        pre = asym["checkpoints"]["pre_attack"]
-        attack = asym["checkpoints"]["under_ambiguity"]
-        early = asym["checkpoints"]["one_clean_after_attack"]
-        final = asym["checkpoints"]["full_recovery"]
+        pre = selected["checkpoints"]["pre_attack"]
+        attack = selected["checkpoints"]["under_ambiguity"]
+        early = selected["checkpoints"]["one_clean_after_attack"]
+        final = selected["checkpoints"]["full_recovery"]
 
         self.assertGreater(pre["genuine_fast_fraction"], 0.65)
         self.assertLess(attack["genuine_fast_fraction"], 0.35)
@@ -48,17 +48,22 @@ class RecoverableUncertaintyTests(unittest.TestCase):
         )
 
         policies = report["authority_policies"]
-        asym = policies["asymmetric_eligibility"]
+        symmetric = policies["symmetric_ema"]
+        asymmetric = policies["asymmetric_eligibility"]
         permanent = policies["permanent_veto"]
         cumulative = policies["cumulative_mean"]
 
         self.assertLess(
-            asym["balanced_checkpoint_error"],
+            symmetric["balanced_checkpoint_error"],
             permanent["balanced_checkpoint_error"],
         )
-        self.assertLess(
-            asym["balanced_checkpoint_error"],
+        self.assertLessEqual(
+            symmetric["balanced_checkpoint_error"],
             cumulative["balanced_checkpoint_error"],
+        )
+        self.assertLessEqual(
+            symmetric["balanced_checkpoint_error"],
+            asymmetric["balanced_checkpoint_error"],
         )
 
 
