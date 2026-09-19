@@ -872,24 +872,98 @@ It does **not** yet support the stronger claim that separate attack and recovery
 timescales are necessary. Validation weakly prefers them; the final held-out test
 cannot distinguish the two temporal families.
 
-## Next attacker
+## Gate 17: false-clean recovery hits an observability boundary
 
-Attack the remaining tie directly.
+The stronger hysteresis attacker exposed a causal limit rather than a better
+timescale.
 
-Randomize ambiguity duration and recovery duration, and insert isolated
-high-confidence **false-clean glitches** inside ambiguous periods. A single
-timescale faces a sharper conflict:
+Construct paired worlds with:
 
 ```text
-drop authority quickly when danger appears
-but
-do not restore authority from one or two clean-looking glitches
-while
-still recovering after genuinely sustained clean evidence
+8 clear observations
+2-5 ambiguous observations
+1-4 clean-looking observations
+--------------------------------
+split point
+--------------------------------
+stable future:   clean continues
+relapse future:  ambiguity returns
 ```
 
-Train both temporal families on one duration distribution, select on held-out
-durations, then test on unseen attack/recovery lengths. If the symmetric family
-still matches the asymmetric one, delete the extra timescale. If it cannot,
-Gate 17 will have earned hysteresis rather than assumed it.
+Everything above the split is generated once and copied verbatim into both
+worlds.
+
+CI reference, 40 training / 80 held-out pairs:
+
+```text
+max observed-prefix difference     0.000000
+```
+
+At the split:
+
+| causal state | max paired state diff | best balanced accuracy |
+|---|---:|---:|
+| raw | 0.000000 | 0.500 |
+| cumulative mean | 0.000000 | 0.500 |
+| symmetric EMA | 0.000000 | 0.500 |
+| asymmetric eligibility | 0.000000 | 0.500 |
+
+The Gate-16 states do differ in how quickly they re-authorize a clean-looking
+streak:
+
+```text
+clean streak       symmetric fast       asymmetric fast
+1                  0.067                0.000
+2                  1.000                0.769
+3                  1.000                1.000
+4                  1.000                1.000
+```
+
+But that cannot be interpreted as future prediction. The stable-recovery and
+false-clean-relapse member of each pair have the exact same state.
+
+One genuinely new RGB observation breaks the pair identity:
+
+```text
+post-split learned threshold       0.994541
+training balanced accuracy         1.00000
+held-out balanced accuracy         0.99375
+
+median stable target               0.995967
+median relapse target              0.674047
+```
+
+So the Gate-16 asymmetry question is now bounded more precisely:
+
+[
+\boxed{
+\text{memory controls commitment latency}
+\neq
+\text{memory predicts an unobserved future}
+}
+]
+
+Separate attack and recovery constants may still be useful engineering knobs,
+but no prefix-only temporal mechanism can decide whether a currently identical
+recovery streak will persist.
+
+## Next attacker
+
+Gate 17 tells us exactly what would be required to beat chance **before** the
+relapse: a new observable that differs while ordinary confidence/common-fate
+history is still identical.
+
+The next gate should therefore keep the Gate-17 confidence prefix matched and
+add a second local predictive measurement from the correspondence itself, such
+as:
+
+- forward/backward match consistency,
+- best-vs-second-best template margin,
+- local reconstruction/prediction residual,
+- or short-horizon motion-model surprise.
+
+The crucial attacker is a shuffled-cue control. If one of those measurements
+separates stable recovery from false-clean relapse *before* the ordinary
+confidence trace diverges, it has earned predictive authority. If none does, the
+correct action is simply to accept the latency established by Gate 17.
 

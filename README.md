@@ -967,6 +967,99 @@ The strongest justified conclusion is therefore:
 The validation split weakly prefers separate attack/recovery timescales, but the
 held-out tie means Gate 16 does **not** establish that asymmetry is necessary.
 
+
+## Gate 17 — temporal memory cannot predict an unobserved relapse
+
+Gate 16 established recoverable relation confidence, but left a small model-choice
+question: does the relation really need separate attack and recovery timescales?
+
+Gate 17 attacks that question at a stricter causal boundary.
+
+After eight established clear observations and a randomized **2–5 observation**
+ambiguous interval, the relation receives a randomized **1–4 observation clean-
+looking streak**. At that exact point we fork two futures:
+
+```text
+stable recovery:
+    clean evidence continues
+
+false-clean relapse:
+    ambiguity returns on the next observation
+```
+
+The two worlds share the **exact same noisy-RGB-derived evidence prefix**. Nothing
+about the future label is available yet.
+
+That gives a simple paired receipt:
+
+```text
+max target-prefix difference           0.000000
+```
+
+and, because every causal state is a deterministic function of that same prefix:
+
+| state family | max paired state difference | best split balanced accuracy |
+|---|---:|---:|
+| raw current evidence | 0.000000 | 0.500 |
+| cumulative mean | 0.000000 | 0.500 |
+| symmetric EMA | 0.000000 | 0.500 |
+| asymmetric eligibility | 0.000000 | 0.500 |
+
+So the unresolved Gate-16 question has a harder answer:
+
+> **extra temporal state cannot predict whether an observationally identical
+> recovery prefix will persist.**
+
+The two Gate-16 policies merely choose different speed/safety trade-offs.
+
+On 80 held-out paired worlds, their fast-authority fractions at the split were:
+
+| clean-looking streak | symmetric fast | asymmetric fast |
+|---:|---:|---:|
+| 1 observation | 0.067 | 0.000 |
+| 2 observations | 1.000 | 0.769 |
+| 3 observations | 1.000 | 1.000 |
+| 4 observations | 1.000 | 1.000 |
+
+The asymmetric state is more conservative for roughly one additional clean
+observation, but by a three-step clean streak **both states have fully
+re-authorized both paired futures**. Since one member of every pair will relapse,
+that is not better prediction. It is only a delayed commitment.
+
+Then the first genuinely new observation arrives.
+
+```text
+learned post-split target threshold     0.994541
+training balanced accuracy              1.00000
+held-out balanced accuracy              0.99375
+
+median stable-recovery target           0.995967
+median relapse target                   0.674047
+```
+
+So the information boundary is not permanent. It disappears immediately when
+new visual evidence distinguishes the futures.
+
+The strongest Gate-17 statement is:
+
+```text
+same observed prefix
+        =>
+same causal state
+        =>
+no prefix-only mechanism can know which future follows
+```
+
+or, for the balanced paired attacker,
+
+```text
+best possible split accuracy = 0.5
+```
+
+This does **not** invalidate Gate 16. Memory still determines a useful local
+safety/latency trade-off. Gate 17 says that tuning that memory cannot manufacture
+an observable that is absent from the history.
+
 ## Current picture
 
 ```text
@@ -1024,13 +1117,20 @@ recoverable relation confidence
     +-- clear -> ambiguous -> clear -----------> authority retreats then returns
     +-- permanent veto ------------------------> safe but cannot recover
     +-- validation model selection ------------> weak preference for asymmetry
+    |
+    v
+false-clean identical-prefix boundary
+    |
+    +-- same prefix / opposite futures -------> every causal state identical
+    +-- first new RGB evidence ---------------> prediction returns at 99.375%
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> visual history controls relation authority; uncertainty can locally withdraw
-> that authority; and repeated clean evidence can earn it back.**
+> visual history controls relation authority; uncertainty can withdraw and later
+> restore that authority; but temporal memory cannot infer a future that is not
+> yet observable in the evidence.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -1061,6 +1161,7 @@ python gate13_predictive_relation_admission.py --train-trials 3000 --test-trials
 python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200
 python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
 python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
+python gate17_false_clean_identical_prefix.py --train-pairs 40 --test-pairs 80
 ```
 
 No SciPy or scikit-learn is required.
