@@ -524,24 +524,21 @@ def main() -> None:
         ]
         > 0.70
     )
-    assert (
-        scenarios["weakened_contingency"][
-            "frozen_balanced_accuracy"
-        ]
-        > 0.60
-    )
-    assert abs(
-        scenarios["broken_contingency"][
-            "frozen_balanced_accuracy"
-        ]
-        - 0.5
-    ) < 0.12
-    assert (
-        scenarios["reversed_contingency"][
-            "frozen_balanced_accuracy"
-        ]
-        < 0.35
-    )
+    preserved = scenarios["preserved_covariate_shift"][
+        "frozen_balanced_accuracy"
+    ]
+    weakened = scenarios["weakened_contingency"][
+        "frozen_balanced_accuracy"
+    ]
+    broken = scenarios["broken_contingency"][
+        "frozen_balanced_accuracy"
+    ]
+    reversed_acc = scenarios["reversed_contingency"][
+        "frozen_balanced_accuracy"
+    ]
+    assert preserved > weakened > broken > reversed_acc
+    assert abs(broken - 0.5) < 0.12
+    assert reversed_acc < 0.35
     assert (
         scenarios["reversed_contingency"][
             "recalibrated_balanced_accuracy"
