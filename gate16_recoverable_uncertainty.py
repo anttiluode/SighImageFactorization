@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate 16: recoverable local uncertainty with asymmetric eligibility dynamics.
+"""Gate 16: recoverable local uncertainty with learned eligibility dynamics.
 
 Gate 15 established that track confidence can veto a dangerous false-common-fate
 match. Its veto was one-shot: one history was compressed to one confidence
@@ -17,8 +17,9 @@ The desired behavior is stricter than a binary veto:
     3. one clean sample after ambiguity should NOT restore it immediately,
     4. repeated clean evidence should eventually restore it.
 
-That fourth condition rules out a permanent veto. The third rules out a
-fast symmetric smoother that forgets danger immediately.
+That fourth condition rules out a permanent veto. The third creates a genuine
+hysteresis test, but does not assume that separate attack/recovery timescales are
+necessary. A symmetric EMA is allowed to win if one timescale is sufficient.
 
 Every observation still comes from noisy RGB and the Gate-6 template matcher.
 For a clean observation the two candidates are rendered without occlusion or a
@@ -690,16 +691,30 @@ def run_reference(
         "tracker_phase_receipt": tracker_phase_receipt(test),
         "authority_policies": policies,
         "downstream_relation_dynamics": downstream,
+        "model_selection": {
+            "selected_simplest_policy": (
+                "symmetric_ema"
+                if learned["symmetric_ema"]["balanced_checkpoint_error"]
+                <= learned["asymmetric_eligibility"]["balanced_checkpoint_error"]
+                else "asymmetric_eligibility"
+            ),
+            "selection_rule": (
+                "Prefer the lower training checkpoint error; on a tie prefer "
+                "the one-timescale symmetric EMA."
+            ),
+        },
         "interpretation": (
-            "A permanent veto is safe under ambiguity but cannot recover. A "
-            "cumulative history is reluctant to forget earlier clean evidence "
-            "and therefore stays overconfident during the attack. A fast "
-            "symmetric state can attack quickly but tends to re-authorize after "
-            "too little clean evidence. The learned asymmetric eligibility "
-            "state separates those timescales: authority falls quickly under "
-            "local uncertainty, remains cautious after one clean sample, then "
-            "returns after repeated clean evidence. The state remains local to "
-            "the candidate relation, so other relations need not be slowed."
+            "A permanent veto is safe under ambiguity but cannot recover. "
+            "Cumulative history is already surprisingly strong, but can remain "
+            "too close to the fast threshold after the attack. The learned "
+            "symmetric EMA satisfies all four held-out checkpoints in this "
+            "attacker: fast before ambiguity, cautious during ambiguity, still "
+            "cautious after one clean sample, and fast again after sustained "
+            "clean evidence. The asymmetric state also succeeds but provides no "
+            "error advantage here, so its extra timescale is not earned. The "
+            "current result is therefore recoverable local uncertainty with a "
+            "single learned memory timescale, not evidence for asymmetric "
+            "hysteresis."
         ),
     }
 
@@ -733,15 +748,15 @@ def main() -> None:
     )
     print(json.dumps(report, indent=2))
 
+    symmetric = report["authority_policies"]["symmetric_ema"]
     asym = report["authority_policies"]["asymmetric_eligibility"]
     permanent = report["authority_policies"]["permanent_veto"]
     cumulative = report["authority_policies"]["cumulative_mean"]
-    symmetric = report["authority_policies"]["symmetric_ema"]
 
-    pre = asym["checkpoints"]["pre_attack"]
-    attack = asym["checkpoints"]["under_ambiguity"]
-    early = asym["checkpoints"]["one_clean_after_attack"]
-    final = asym["checkpoints"]["full_recovery"]
+    pre = symmetric["checkpoints"]["pre_attack"]
+    attack = symmetric["checkpoints"]["under_ambiguity"]
+    early = symmetric["checkpoints"]["one_clean_after_attack"]
+    final = symmetric["checkpoints"]["full_recovery"]
 
     assert pre["genuine_fast_fraction"] > 0.80
     assert attack["genuine_fast_fraction"] < 0.20
@@ -750,29 +765,29 @@ def main() -> None:
     assert final["accidental_fast_fraction"] < 0.15
 
     assert (
-        asym["balanced_checkpoint_error"]
+        symmetric["balanced_checkpoint_error"]
         < permanent["balanced_checkpoint_error"]
     )
     assert (
-        asym["balanced_checkpoint_error"]
-        < cumulative["balanced_checkpoint_error"]
+        symmetric["balanced_checkpoint_error"]
+        <= cumulative["balanced_checkpoint_error"]
     )
     assert (
-        asym["balanced_checkpoint_error"]
-        <= symmetric["balanced_checkpoint_error"]
+        symmetric["balanced_checkpoint_error"]
+        <= asym["balanced_checkpoint_error"]
     )
 
-    asym_down = report["downstream_relation_dynamics"][
-        "asymmetric_eligibility"
+    selected_down = report["downstream_relation_dynamics"][
+        "symmetric_ema"
     ]
     assert (
-        asym_down["under_ambiguity"][
+        selected_down["under_ambiguity"][
             "accidental_false_merge_fraction"
         ]
         < 0.15
     )
     assert (
-        asym_down["full_recovery"][
+        selected_down["full_recovery"][
             "genuine_merge_fraction"
         ]
         > 0.65
