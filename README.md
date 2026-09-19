@@ -1150,6 +1150,97 @@ instability predictive of relapse. It does **not** establish that motion surpris
 is a universal predictor of tracking failure or object identity in natural
 video.
 
+
+## Gate 19 — the observable transfers; its meaning may not
+
+Gate 18 deliberately created a world where short-horizon motion instability
+predicted future relapse. Gate 19 freezes that predictor and changes the world
+around it.
+
+The RGB observable remains the same:
+
+```text
+motion surprise = mean_t ||vhat(t+1) - vhat(t)||^2
+```
+
+but the statistical relationship between surprise and future failure changes.
+
+Five worlds are tested:
+
+| world | stable switch p | relapse switch p | extra shift |
+|---|---:|---:|---|
+| baseline | 0.10 | 0.70 | none |
+| preserved covariate shift | 0.10 | 0.70 | alternate motion vocabulary + extra RGB noise |
+| weakened contingency | 0.25 | 0.55 | none |
+| broken contingency | 0.40 | 0.40 | none |
+| reversed contingency | 0.70 | 0.10 | none |
+
+The Gate-18 rule is frozen before seeing any of these test worlds. A separate
+30-pair calibration set is also allowed to relearn only the scalar
+surprise->future mapping, providing an adaptation control.
+
+Reference run: **40 original training pairs, 30 calibration pairs per world,
+80 untouched test pairs per world**.
+
+| world | frozen rule | recalibrated rule |
+|---|---:|---:|
+| baseline | **0.8750** | 0.8750 |
+| preserved covariate shift | **0.88125** | 0.88125 |
+| weakened contingency | **0.6500** | 0.6500 |
+| broken contingency | **0.5000** | 0.5000 |
+| reversed contingency | **0.1375** | **0.8375** |
+
+The preserved shift is especially useful. The RGB world changes, but the causal
+contingency survives, and the frozen predictor transfers essentially unchanged.
+Its tracking receipt remains clean:
+
+```text
+median confidence             0.99449
+exact RGB motion recovery     1.00000
+common-fate recovery          1.00000
+```
+
+As the contingency weakens, prediction degrades. When the two future classes
+have the same motion-instability distribution, both frozen and recalibrated
+rules are exactly **chance**. Recalibration cannot manufacture information that
+does not exist.
+
+When the relationship reverses, the frozen Gate-18 rule becomes actively wrong:
+
+```text
+frozen balanced accuracy       0.1375
+stable fast fraction           0.225
+relapse false-fast fraction    0.950
+```
+
+A small in-world calibration set discovers the reversal, flips the scalar rule
+from **low surprise = stable** to **high surprise = stable**, and recovers to
+**0.8375** held-out balanced accuracy.
+
+The oracle-motion control exactly matches the RGB result in these worlds, so the
+portability boundary here is not a tracking-estimation failure.
+
+The resulting decomposition is:
+
+> **the RGB observable can be reusable while the causal meaning attached to it
+> remains environment-dependent.**
+
+or:
+
+```text
+measurement      motion surprise
+        |
+        +---- can transfer across covariate shift
+        |
+learned meaning  surprise -> relapse risk
+        |
+        +---- must change when the world contingency changes
+```
+
+This is a useful failure mode rather than a robustness claim: a predictor should
+become uncertain or wrong when the world changes underneath its learned causal
+association.
+
 ## Current picture
 
 ```text
@@ -1220,14 +1311,22 @@ pre-relapse predictive observable
     +-- confidence remains matched -----------> old temporal states stay at chance
     +-- motion surprise ----------------------> 90.625% future classification
     +-- shuffled surprise --------------------> advantage collapses
+    |
+    v
+predictive-cue portability
+    |
+    +-- preserved covariate shift -----------> frozen cue stays ~88%
+    +-- weakened / broken contingency -------> degrades to 65% / 50%
+    +-- reversed contingency ----------------> frozen cue becomes anti-predictive
+    +-- small recalibration -----------------> reversed world recovers to 83.75%
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
 > visual history controls relation authority; memory determines how evidence is
-> accumulated; and prediction becomes possible only when a local observable
-> actually contains information about the future.**
+> accumulated; useful observables may transfer across worlds, but their causal
+> meaning must track the contingency that makes them predictive.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -1260,6 +1359,7 @@ python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
 python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
 python gate17_false_clean_identical_prefix.py --train-pairs 40 --test-pairs 80
 python gate18_pre_relapse_predictive_cue.py --train-pairs 40 --validation-pairs 30 --test-pairs 80
+python gate19_predictive_cue_portability.py --gate18-train-pairs 40 --calibration-pairs 30 --test-pairs 80
 ```
 
 No SciPy or scikit-learn is required.
