@@ -947,23 +947,107 @@ Separate attack and recovery constants may still be useful engineering knobs,
 but no prefix-only temporal mechanism can decide whether a currently identical
 recovery streak will persist.
 
+## Gate 18: preserve one more thing the RGB matcher already knew
+
+Gate 17's chance result was a representation boundary, not a claim that the raw
+RGB frames contained no other structure.
+
+One tempting candidate was rejected before implementation: Gate 6's
+"confidence" is already the normalized best-vs-second-best template score
+margin, so renaming match margin would add no information.
+
+Gate 18 instead preserves the **absolute shared translation vector**, which
+Gates 14-17 discarded after deciding that the candidates moved together.
+
+Every accepted prefix is conditioned so the old admission bit is identical:
+
+```text
+common-fate residual             0
+confidence                       >= 0.95
+ordinary relation admission      TRUE
+```
+
+All motions have equal speed.
+
+Stable trajectories switch shared direction with probability 0.04 per
+transition. Future-relapse trajectories begin identically, then switch with
+probability 0.65 in the later prefix. This is deliberately a controlled
+predictive precursor, not a natural-video assumption.
+
+The learned measurement is
+
+[
+s = \frac{1}{T-1}\sum_t
+||\hat v_t-\hat v_{t-1}||^2.
+]
+
+CI reference, 120 training / 240 held-out trials:
+
+```text
+old admission TRUE fraction            1.0000
+minimum confidence                     0.993065
+max common-fate residual               0.000000
+estimated-motion accuracy              1.0000
+
+learned surprise threshold             0.000000
+median stable surprise                 0.000000
+median relapse-prefix surprise         1.000000
+```
+
+Held-out classification:
+
+```text
+matched old admission                  0.5000
+RGB motion surprise                    0.9042
+oracle motion surprise                 0.9042
+shuffled RGB surprise                  0.4542
+```
+
+The RGB cue exactly reaches the oracle ceiling in this controlled world.
+
+Downstream relation admission:
+
+| policy | stable merge | relapse false merge | balanced accuracy |
+|---|---:|---:|---:|
+| old matched admission | 0.8500 | 0.8000 | 0.5250 |
+| **RGB surprise** | **0.7250** | **0.0167** | **0.8542** |
+| shuffled surprise | 0.3417 | 0.3583 | 0.4917 |
+| global cautious | 0.0000 | 0.0000 | 0.5000 |
+
+So Gate 17 and Gate 18 now form a useful pair:
+
+[
+\boxed{
+\text{same represented evidence} \Rightarrow \text{no memory can help}
+}
+]
+
+but
+
+[
+\boxed{
+\text{preserve an informative discarded observable}
+\Rightarrow
+\text{prediction can return}
+}
+]
+
 ## Next attacker
 
-Gate 17 tells us exactly what would be required to beat chance **before** the
-relapse: a new observable that differs while ordinary confidence/common-fate
-history is still identical.
+The obvious criticism is that Gate 18 **builds directional instability into the
+future-relapse class**. That is acceptable for mechanism isolation, but it has
+not earned general predictive status.
 
-The next gate should therefore keep the Gate-17 confidence prefix matched and
-add a second local predictive measurement from the correspondence itself, such
-as:
+The next useful gate should therefore attack transfer:
 
-- forward/backward match consistency,
-- best-vs-second-best template margin,
-- local reconstruction/prediction residual,
-- or short-horizon motion-model surprise.
+- train the surprise threshold on one pair of switch probabilities,
+- change the stable/relapse dynamics at test time,
+- include a world where direction changes are benign rather than precursors,
+- and compare raw surprise against a calibrated predictor that is allowed to
+  learn whether surprise is informative in the current world.
 
-The crucial attacker is a shuffled-cue control. If one of those measurements
-separates stable recovery from false-clean relapse *before* the ordinary
-confidence trace diverges, it has earned predictive authority. If none does, the
-correct action is simply to accept the latency established by Gate 17.
+If motion surprise remains useful only when the generator makes it predictive,
+that is an important boundary: the observable carries information, but its
+*meaning* is environment-dependent. The mechanism should then learn cue
+reliability rather than hard-code "direction change = danger."
 
