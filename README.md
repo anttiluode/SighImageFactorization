@@ -851,6 +851,122 @@ The current boundary is now about **uncertainty accumulation**. One low-confiden
 probe can veto fast admission, but a real system should recover when later
 evidence becomes clean rather than remaining cautious forever.
 
+
+## Gate 16 — uncertainty can retreat and recover
+
+Gate 15 could veto a dubious relation, but it compressed one history into one
+decision. Gate 16 gives the **same candidate relation** a temporal sequence:
+
+```text
+8 clear observations
+4 ambiguous / look-alike observations
+1 clean observation
+7 more clean observations
+```
+
+The required authority state is deliberately nontrivial:
+
+```text
+after clear history             fast
+after ambiguity                 cautious
+after one clean observation     still cautious
+after sustained clean recovery  fast again
+```
+
+Every observation is still derived from noisy RGB. Clear observations use the
+Gate-14 tracker; ambiguous observations reuse Gate 15's appearance jump,
+occlusion and look-alike attacker.
+
+The local evidence target is
+
+```text
+target = tracker confidence     when estimated common fate is present
+         0                      otherwise
+```
+
+Four memory families compete:
+
+| policy | mechanism |
+|---|---|
+| permanent veto | one bad observation kills authority forever |
+| cumulative mean | all evidence has equal historical weight |
+| symmetric EMA | one learned attack/recovery timescale |
+| asymmetric eligibility | separate learned attack and recovery timescales |
+
+The temporal parameters are learned on **80 training sequences**. Symmetric and
+asymmetric families are then compared on a separate **80-sequence validation
+split**. Only after that model choice is frozen are they evaluated on **240
+held-out sequences**.
+
+Learned parameters:
+
+```text
+permanent veto        threshold = 0.90
+cumulative mean       threshold = 0.90
+symmetric EMA         tau = 1.5, threshold = 0.90
+asymmetric state      attack tau = 1.5
+                      recovery tau = 6.0
+                      threshold = 0.75
+```
+
+Validation checkpoint error:
+
+```text
+permanent veto        0.250000
+cumulative mean       0.008333
+symmetric EMA         0.002083
+asymmetric state      0.000000
+```
+
+So the pre-registered selection rule chooses the **asymmetric state**. The margin
+is tiny: the symmetric state made one premature re-authorization on validation,
+while the asymmetric state made none.
+
+On the independent 240-sequence test, however, **both dynamic families are
+perfect at the four decision checkpoints**:
+
+| held-out checkpoint | symmetric genuine fast | asymmetric genuine fast | accidental fast |
+|---|---:|---:|---:|
+| before attack | 1.000 | 1.000 | 0.000 |
+| under ambiguity | 0.000 | 0.000 | 0.000 |
+| one clean after attack | 0.000 | 0.000 | 0.000 |
+| full recovery | 1.000 | 1.000 | 0.000 |
+
+The selected asymmetric state's median genuine authority moves
+
+```text
+pre-attack             0.7644
+under ambiguity        0.6662
+one clean later        0.7211
+full recovery          0.9193
+```
+
+while accidental authority falls to approximately zero after clean evidence
+returns.
+
+Downstream D=8 relation dynamics follow the authority decision. For the selected
+state:
+
+```text
+pre-attack:       genuine merge 0.825   accidental merge 0.000
+under ambiguity:  genuine merge 0.000   accidental merge 0.000
+one clean later:  genuine merge 0.000   accidental merge 0.000
+full recovery:    genuine merge 0.825   accidental merge 0.000
+```
+
+Permanent veto is safe but never recovers. The cumulative mean recovers, but on
+held-out data it prematurely restores fast authority to about 10% of genuine
+relations after just one clean sample.
+
+The strongest justified conclusion is therefore:
+
+> **relation confidence needs recoverable temporal state; permanent distrust is
+> too rigid, while memory can withdraw causal authority during ambiguity and
+> restore it after repeated clean evidence.**
+
+The validation split weakly prefers separate attack/recovery timescales, but the
+held-out tie means Gate 16 does **not** establish that asymmetry is necessary.
+
 ## Current picture
 
 ```text
@@ -901,13 +1017,20 @@ track-confidence admission
     |
     +-- look-alike / occlusion attacker -------> residual alone becomes unsafe
     +-- local confidence veto -----------------> 80% genuine / 5% accidental
+    |
+    v
+recoverable relation confidence
+    |
+    +-- clear -> ambiguous -> clear -----------> authority retreats then returns
+    +-- permanent veto ------------------------> safe but cannot recover
+    +-- validation model selection ------------> weak preference for asymmetry
 ```
 
 The working hypothesis is now:
 
 > **the operator creates the grouping; local dynamics create an instance address;
-> visual history can control relation authority; and uncertainty can locally
-> slow only the correspondence that does not deserve fast authority yet.**
+> visual history controls relation authority; uncertainty can locally withdraw
+> that authority; and repeated clean evidence can earn it back.**
 
 Residues remain useful as an exact trajectory microscope, but they are no longer
 being asked to manufacture objects by themselves.
@@ -937,6 +1060,7 @@ python gate12_learned_relation_timescale.py --train-trials 3000 --test-trials 50
 python gate13_predictive_relation_admission.py --train-trials 3000 --test-trials 5000
 python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200
 python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
+python gate16_recoverable_uncertainty.py --train-trials 80 --validation-trials 80 --test-trials 240 --threshold-train-trials 80
 ```
 
 No SciPy or scikit-learn is required.
