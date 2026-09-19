@@ -1,0 +1,90 @@
+{
+  "gate": 18,
+  "title": "RGB shared-motion surprise escapes the matched-admission boundary",
+  "ci_reference": {
+    "train_trials": 120,
+    "test_trials": 240,
+    "dimension": 8,
+    "history_steps": 5,
+    "stable_switch_probability": 0.04,
+    "relapse_switch_probability": 0.65,
+    "relapse_unstable_start": 2,
+    "ordinary_min_confidence": 0.95,
+    "learned_rgb_surprise_threshold": 0,
+    "learned_oracle_surprise_threshold": 0,
+    "training": {
+      "rgb_surprise": {
+        "balanced_error": 0.06666666666666667,
+        "false_negative_rate": 0.13333333333333333,
+        "false_positive_rate": 0
+      },
+      "oracle_surprise": {
+        "balanced_error": 0.06666666666666667,
+        "false_negative_rate": 0.13333333333333333,
+        "false_positive_rate": 0
+      }
+    },
+    "matched_old_evidence": {
+      "ordinary_bit_true_fraction": 1,
+      "ordinary_accuracy": 0.5,
+      "ordinary_balanced_error": 0.5,
+      "minimum_confidence": 0.9930647155249467,
+      "median_minimum_confidence": 0.9953369815827515,
+      "max_common_fate_residual": 0
+    },
+    "tracker": {
+      "mean_motion_accuracy": 1,
+      "median_rgb_surprise_stable": 0,
+      "median_rgb_surprise_relapse": 1,
+      "median_oracle_surprise_stable": 0,
+      "median_oracle_surprise_relapse": 1
+    },
+    "held_out_cues": {
+      "ordinary_matched_admission": {
+        "accuracy": 0.5,
+        "balanced_error": 0.5,
+        "false_negative_rate": 0,
+        "false_positive_rate": 1
+      },
+      "rgb_motion_surprise": {
+        "accuracy": 0.9041666666666667,
+        "balanced_error": 0.09583333333333333,
+        "false_negative_rate": 0.15833333333333333,
+        "false_positive_rate": 0.03333333333333333
+      },
+      "oracle_motion_surprise": {
+        "accuracy": 0.9041666666666667,
+        "balanced_error": 0.09583333333333333,
+        "false_negative_rate": 0.15833333333333333,
+        "false_positive_rate": 0.03333333333333333
+      },
+      "shuffled_rgb_surprise": {
+        "accuracy": 0.45416666666666666,
+        "balanced_error": 0.5458333333333333
+      }
+    },
+    "policies": {
+      "ordinary_matched_fast": {
+        "genuine_merge_fraction": 0.85,
+        "accidental_false_merge_fraction": 0.8,
+        "balanced_relation_accuracy": 0.525
+      },
+      "rgb_surprise_fast_or_cautious": {
+        "genuine_merge_fraction": 0.725,
+        "accidental_false_merge_fraction": 0.016666666666666666,
+        "balanced_relation_accuracy": 0.8541666666666666
+      },
+      "shuffled_surprise": {
+        "genuine_merge_fraction": 0.3416666666666667,
+        "accidental_false_merge_fraction": 0.35833333333333334,
+        "balanced_relation_accuracy": 0.49166666666666664
+      },
+      "global_cautious": {
+        "genuine_merge_fraction": 0,
+        "accidental_false_merge_fraction": 0,
+        "balanced_relation_accuracy": 0.5
+      }
+    }
+  },
+  "boundary": "Gate 17 cannot be escaped by more memory over the same evidence. Gate 18 escapes it by preserving a previously discarded RGB-derived observable: absolute shared-motion trajectory. Motion surprise predicts future relapse while ordinary high-confidence common-fate admission is exactly matched, but the cue's predictive meaning is still generator-dependent and must be attacked for transfer."
+}
