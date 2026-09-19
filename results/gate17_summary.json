@@ -1,0 +1,99 @@
+{
+  "gate": 17,
+  "title": "false-clean identical-prefix observability boundary",
+  "ci_reference": {
+    "train_pairs": 40,
+    "test_pairs": 80,
+    "pre_clear_observations": 8,
+    "attack_lengths": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "false_clean_lengths": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "future_observations": 4,
+    "max_target_prefix_difference": 0,
+    "split_point": {
+      "raw": {
+        "max_paired_state_difference": 0,
+        "median_split_state": 0.9960706523243399,
+        "best_balanced_accuracy": 0.5
+      },
+      "cumulative_mean": {
+        "max_paired_state_difference": 0,
+        "median_split_state": 0.9109908629109029,
+        "best_balanced_accuracy": 0.5
+      },
+      "symmetric_ema": {
+        "max_paired_state_difference": 0,
+        "median_split_state": 0.9840549236008891,
+        "best_balanced_accuracy": 0.5
+      },
+      "asymmetric_eligibility": {
+        "max_paired_state_difference": 0,
+        "median_split_state": 0.8081622904417267,
+        "best_balanced_accuracy": 0.5
+      }
+    },
+    "gate16_reauthorization": {
+      "symmetric_ema": {
+        "1": {
+          "pairs": 15,
+          "fast_fraction": 0.06666666666666667,
+          "median_authority": 0.8918538594727018
+        },
+        "2": {
+          "pairs": 13,
+          "fast_fraction": 1,
+          "median_authority": 0.9602373355354031
+        },
+        "3": {
+          "pairs": 26,
+          "fast_fraction": 1,
+          "median_authority": 0.9842874620423065
+        },
+        "4": {
+          "pairs": 26,
+          "fast_fraction": 1,
+          "median_authority": 0.9921148238437623
+        }
+      },
+      "asymmetric_eligibility": {
+        "1": {
+          "pairs": 15,
+          "fast_fraction": 0,
+          "median_authority": 0.7300158840066554
+        },
+        "2": {
+          "pairs": 13,
+          "fast_fraction": 0.7692307692307693,
+          "median_authority": 0.7657122695079438
+        },
+        "3": {
+          "pairs": 26,
+          "fast_fraction": 1,
+          "median_authority": 0.8083265412450866
+        },
+        "4": {
+          "pairs": 26,
+          "fast_fraction": 1,
+          "median_authority": 0.8402268252281964
+        }
+      }
+    },
+    "first_post_split_observation": {
+      "learned_threshold": 0.9945411041623595,
+      "training_balanced_accuracy": 1,
+      "held_out_balanced_accuracy": 0.99375,
+      "median_stable_target": 0.9959669536360137,
+      "median_relapse_target": 0.6740473162483092
+    }
+  },
+  "boundary": "With an exactly identical RGB-derived evidence prefix, all deterministic prefix-only temporal states are identical and future-type prediction is exactly chance. Memory controls commitment latency but cannot manufacture missing observability. The first genuinely new RGB observation restores near-perfect prediction."
+}
