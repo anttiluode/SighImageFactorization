@@ -689,6 +689,15 @@ def run_reference(
             )
         )
 
+    symmetric_fast = test["symmetric_state"] >= 0.90
+    asymmetric_fast = test["asymmetric_state"] >= 0.75
+    selected_prediction = apply_rule(
+        test[selected_cue],
+        rules[selected_cue],
+    )
+    stable = test_labels == 1
+    relapse = test_labels == 0
+
     return {
         "train_pairs": train_pairs,
         "validation_pairs": validation_pairs,
@@ -703,6 +712,32 @@ def run_reference(
         "selected_predictive_cue": selected_cue,
         "held_out_balanced_accuracy": test_accuracy,
         "selected_cue_shuffled_balanced_accuracy": shuffled_accuracy,
+        "reauthorization_at_split": {
+            "gate16_symmetric": {
+                "stable_fast_fraction": float(
+                    np.mean(symmetric_fast[stable])
+                ),
+                "relapse_false_fast_fraction": float(
+                    np.mean(symmetric_fast[relapse])
+                ),
+            },
+            "gate16_asymmetric": {
+                "stable_fast_fraction": float(
+                    np.mean(asymmetric_fast[stable])
+                ),
+                "relapse_false_fast_fraction": float(
+                    np.mean(asymmetric_fast[relapse])
+                ),
+            },
+            "predictive_selected_cue": {
+                "stable_fast_fraction": float(
+                    np.mean(selected_prediction[stable])
+                ),
+                "relapse_false_fast_fraction": float(
+                    np.mean(selected_prediction[relapse])
+                ),
+            },
+        },
         "paired_recovery_receipt": {
             "mean_hidden_motion_difference": float(
                 np.mean(paired_motion_difference)
@@ -739,7 +774,10 @@ def run_reference(
             "validation, held-out testing and cue shuffling while the old target "
             "states remain near chance, then the system has found genuinely new "
             "pre-relapse information rather than another way of smoothing the "
-            "same evidence."
+            "same evidence. The reauthorization receipt then interprets that "
+            "prediction causally: old confidence-memory states may already be "
+            "ready to restore fast authority, while the new cue can keep only "
+            "the instability-marked relation cautious."
         ),
     }
 
