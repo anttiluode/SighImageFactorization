@@ -607,6 +607,8 @@ def run_reference(
     threshold_train_trials: int,
     threshold_seed: int,
     train_seed: int,
+    validation_trials: int,
+    validation_seed: int,
     test_seed: int,
     address_seed: int,
 ) -> dict:
@@ -644,6 +646,35 @@ def run_reference(
             train["labels"],
         ),
     }
+
+    validation = generate_sequence_dataset(
+        validation_trials,
+        validation_seed,
+        residual_threshold,
+    )
+    validation_predictions = policy_predictions(
+        validation["target"],
+        learned,
+    )
+    validation_reports = {}
+    for name, (authority, fast) in validation_predictions.items():
+        validation_reports[name] = checkpoint_report(
+            validation["labels"],
+            authority,
+            fast,
+        )
+
+    symmetric_validation_error = validation_reports[
+        "symmetric_ema"
+    ]["balanced_checkpoint_error"]
+    asymmetric_validation_error = validation_reports[
+        "asymmetric_eligibility"
+    ]["balanced_checkpoint_error"]
+    selected_dynamic_policy = (
+        "asymmetric_eligibility"
+        if asymmetric_validation_error < symmetric_validation_error
+        else "symmetric_ema"
+    )
 
     test = generate_sequence_dataset(
         test_trials,
@@ -692,29 +723,26 @@ def run_reference(
         "authority_policies": policies,
         "downstream_relation_dynamics": downstream,
         "model_selection": {
-            "selected_simplest_policy": (
-                "symmetric_ema"
-                if learned["symmetric_ema"]["balanced_checkpoint_error"]
-                <= learned["asymmetric_eligibility"]["balanced_checkpoint_error"]
-                else "asymmetric_eligibility"
-            ),
+            "validation_trials": validation_trials,
+            "validation_reports": validation_reports,
+            "selected_dynamic_policy": selected_dynamic_policy,
             "selection_rule": (
-                "Prefer the lower training checkpoint error; on a tie prefer "
-                "the one-timescale symmetric EMA."
+                "Choose the lower validation checkpoint error between the "
+                "learned symmetric and asymmetric temporal families; on a tie "
+                "prefer the simpler symmetric EMA."
             ),
         },
         "interpretation": (
             "A permanent veto is safe under ambiguity but cannot recover. "
-            "Cumulative history is already surprisingly strong, but can remain "
-            "too close to the fast threshold after the attack. The learned "
-            "symmetric EMA satisfies all four held-out checkpoints in this "
-            "attacker: fast before ambiguity, cautious during ambiguity, still "
-            "cautious after one clean sample, and fast again after sustained "
-            "clean evidence. The asymmetric state also succeeds but provides no "
-            "error advantage here, so its extra timescale is not earned. The "
-            "current result is therefore recoverable local uncertainty with a "
-            "single learned memory timescale, not evidence for asymmetric "
-            "hysteresis."
+            "Cumulative history is surprisingly strong but occasionally grants "
+            "authority too early during recovery. Symmetric and asymmetric "
+            "eligibility families are fit only on training trajectories, then "
+            "compared on a separate validation split before the final held-out "
+            "test. This makes the extra attack/recovery timescale earn its place "
+            "only if it improves validation behavior. The mechanism claim is "
+            "therefore recoverable local uncertainty; whether asymmetric "
+            "hysteresis is necessary is an empirical model-selection result, "
+            "not an assumption."
         ),
     }
 
@@ -722,15 +750,17 @@ def run_reference(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-trials", type=int, default=100)
-    parser.add_argument("--test-trials", type=int, default=160)
+    parser.add_argument("--test-trials", type=int, default=240)
+    parser.add_argument("--validation-trials", type=int, default=80)
     parser.add_argument("--threshold-train-trials", type=int, default=80)
     parser.add_argument("--dim", type=int, default=8)
     parser.add_argument("--gamma", type=float, default=0.20)
     parser.add_argument("--pre-steps", type=int, default=240)
     parser.add_argument("--threshold-seed", type=int, default=1600)
     parser.add_argument("--train-seed", type=int, default=1601)
-    parser.add_argument("--test-seed", type=int, default=1602)
-    parser.add_argument("--address-seed", type=int, default=1603)
+    parser.add_argument("--validation-seed", type=int, default=1602)
+    parser.add_argument("--test-seed", type=int, default=1603)
+    parser.add_argument("--address-seed", type=int, default=1604)
     parser.add_argument("--json", type=str, default=None)
     args = parser.parse_args()
 
@@ -743,20 +773,24 @@ def main() -> None:
         threshold_train_trials=args.threshold_train_trials,
         threshold_seed=args.threshold_seed,
         train_seed=args.train_seed,
+        validation_trials=args.validation_trials,
+        validation_seed=args.validation_seed,
         test_seed=args.test_seed,
         address_seed=args.address_seed,
     )
     print(json.dumps(report, indent=2))
 
+    selected_name = report["model_selection"]["selected_dynamic_policy"]
+    selected = report["authority_policies"][selected_name]
     symmetric = report["authority_policies"]["symmetric_ema"]
     asym = report["authority_policies"]["asymmetric_eligibility"]
     permanent = report["authority_policies"]["permanent_veto"]
     cumulative = report["authority_policies"]["cumulative_mean"]
 
-    pre = symmetric["checkpoints"]["pre_attack"]
-    attack = symmetric["checkpoints"]["under_ambiguity"]
-    early = symmetric["checkpoints"]["one_clean_after_attack"]
-    final = symmetric["checkpoints"]["full_recovery"]
+    pre = selected["checkpoints"]["pre_attack"]
+    attack = selected["checkpoints"]["under_ambiguity"]
+    early = selected["checkpoints"]["one_clean_after_attack"]
+    final = selected["checkpoints"]["full_recovery"]
 
     assert pre["genuine_fast_fraction"] > 0.80
     assert attack["genuine_fast_fraction"] < 0.20
@@ -765,20 +799,16 @@ def main() -> None:
     assert final["accidental_fast_fraction"] < 0.15
 
     assert (
-        symmetric["balanced_checkpoint_error"]
+        selected["balanced_checkpoint_error"]
         < permanent["balanced_checkpoint_error"]
     )
     assert (
-        symmetric["balanced_checkpoint_error"]
+        selected["balanced_checkpoint_error"]
         <= cumulative["balanced_checkpoint_error"]
-    )
-    assert (
-        symmetric["balanced_checkpoint_error"]
-        <= asym["balanced_checkpoint_error"]
     )
 
     selected_down = report["downstream_relation_dynamics"][
-        "symmetric_ema"
+        selected_name
     ]
     assert (
         selected_down["under_ambiguity"][
