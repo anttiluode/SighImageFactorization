@@ -33,4 +33,4 @@ jobs:
       - run: python gate13_predictive_relation_admission.py --train-trials 1200 --test-trials 2000
       - run: python gate14_rgb_predictive_relation_admission.py --train-trials 120 --test-trials 200
       - run: python gate15_track_confidence_admission.py --train-trials 80 --test-trials 120
-      - run: python gate16_recoverable_uncertainty.py --train-trials 40 --test-trials 60 --threshold-train-trials 40
+      - run: python gate16_recoverable_uncertainty.py --train-trials 80 --test-trials 120 --threshold-train-trials 80
