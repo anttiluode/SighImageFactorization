@@ -776,18 +776,120 @@ Global caution also prevents false merges, but it cannot bind any genuine
 relation quickly. The confidence gate localizes the caution to the doubtful
 track.
 
+## Gate 16: relation authority becomes a recoverable state
+
+The same candidate relation now experiences:
+
+```text
+8 clear RGB probes
+4 Gate-15 ambiguous / look-alike probes
+1 clean probe
+7 additional clean probes
+```
+
+The desired fast-clock decision is:
+
+```text
+pre-attack             YES
+under ambiguity        NO
+one clean later        NO
+after sustained clear  YES
+```
+
+A permanent veto, cumulative mean, symmetric EMA and asymmetric eligibility
+state are fit on 80 training trajectories.
+
+The learned dynamic families are:
+
+```text
+symmetric EMA:
+    tau                 1.5
+    threshold           0.90
+    training error      0.000
+
+asymmetric eligibility:
+    attack tau          1.5
+    recovery tau        6.0
+    threshold           0.75
+    training error      0.000
+```
+
+Because both fit training perfectly, model choice is made on a separate
+80-trajectory validation split:
+
+```text
+permanent veto         0.250000
+cumulative mean        0.008333
+symmetric EMA          0.002083
+asymmetric state       0.000000
+```
+
+The asymmetric state therefore wins the frozen selection rule, but only by one
+validation mistake made by the symmetric state.
+
+Now evaluate on 240 untouched trajectories.
+
+```text
+                        pre      attack    +1 clean   recovered
+symmetric genuine fast  1.000     0.000     0.000      1.000
+asymmetric genuine fast 1.000     0.000     0.000      1.000
+accidental fast         0.000     0.000     0.000      0.000
+```
+
+Both dynamic families have **zero held-out checkpoint error**.
+
+The selected asymmetric state's median genuine authority is:
+
+```text
+pre-attack              0.7644
+under ambiguity         0.6662
+one clean later         0.7211
+full recovery           0.9193
+```
+
+and downstream relation admission gives:
+
+```text
+pre-attack       genuine merge 0.825   accidental 0.000
+ambiguity        genuine merge 0.000   accidental 0.000
+one clean later  genuine merge 0.000   accidental 0.000
+full recovery    genuine merge 0.825   accidental 0.000
+```
+
+Permanent veto never regains authority. Cumulative history does recover, but
+prematurely re-authorizes about 10% of genuine relations after just one clean
+sample on the final test.
+
+The receipt therefore supports:
+
+[
+\boxed{
+\text{relation authority is a recoverable local state}
+}
+]
+
+It does **not** yet support the stronger claim that separate attack and recovery
+timescales are necessary. Validation weakly prefers them; the final held-out test
+cannot distinguish the two temporal families.
+
 ## Next attacker
 
-Turn the one-shot confidence veto into **recoverable uncertainty**. A relation
-should slow down when correspondence becomes ambiguous, then regain authority
-when clean evidence returns. The next gate should therefore use a sequence with
-clear -> occluded/ambiguous -> clear phases and compare:
+Attack the remaining tie directly.
 
-- permanent veto after one bad observation,
-- naive averaging that forgets danger too quickly,
-- and a local confidence/eligibility state with attack and recovery timescales.
+Randomize ambiguity duration and recovery duration, and insert isolated
+high-confidence **false-clean glitches** inside ambiguous periods. A single
+timescale faces a sharper conflict:
 
-The required result is hysteresis without paralysis: transient ambiguity should
-not merge identities, but later repeated clean evidence should let a genuine
-relation recover its fast clock.
+```text
+drop authority quickly when danger appears
+but
+do not restore authority from one or two clean-looking glitches
+while
+still recovering after genuinely sustained clean evidence
+```
+
+Train both temporal families on one duration distribution, select on held-out
+durations, then test on unseen attack/recovery lengths. If the symmetric family
+still matches the asymmetric one, delete the extra timescale. If it cannot,
+Gate 17 will have earned hysteresis rather than assumed it.
 

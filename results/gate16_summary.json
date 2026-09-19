@@ -1,0 +1,107 @@
+{
+  "gate": 16,
+  "title": "recoverable local relation uncertainty",
+  "ci_reference": {
+    "train_trials": 80,
+    "validation_trials": 80,
+    "test_trials": 240,
+    "clear_pre_observations": 8,
+    "ambiguous_observations": 4,
+    "clear_post_observations": 8,
+    "residual_threshold": 0,
+    "learned_policies": {
+      "permanent_veto": {
+        "threshold": 0.9,
+        "training_balanced_checkpoint_error": 0.25
+      },
+      "cumulative_mean": {
+        "threshold": 0.9,
+        "training_balanced_checkpoint_error": 0.0125
+      },
+      "symmetric_ema": {
+        "tau": 1.5,
+        "threshold": 0.9,
+        "training_balanced_checkpoint_error": 0
+      },
+      "asymmetric_eligibility": {
+        "attack_tau": 1.5,
+        "recovery_tau": 6,
+        "threshold": 0.75,
+        "training_balanced_checkpoint_error": 0
+      }
+    },
+    "validation": {
+      "permanent_veto": 0.25,
+      "cumulative_mean": 0.008333333333333333,
+      "symmetric_ema": 0.0020833333333333333,
+      "asymmetric_eligibility": 0,
+      "selected_dynamic_policy": "asymmetric_eligibility"
+    },
+    "held_out": {
+      "permanent_veto_balanced_checkpoint_error": 0.25,
+      "cumulative_mean_balanced_checkpoint_error": 0.011111111111111112,
+      "symmetric_ema_balanced_checkpoint_error": 0,
+      "asymmetric_eligibility_balanced_checkpoint_error": 0,
+      "symmetric_fast_fractions": {
+        "genuine": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "accidental": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "asymmetric_fast_fractions": {
+        "genuine": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "accidental": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "selected_asymmetric_median_genuine_authority": [
+        0.7643914086014927,
+        0.6662021086509011,
+        0.721131003393531,
+        0.919297339578938
+      ],
+      "selected_downstream": {
+        "pre_attack": {
+          "genuine_merge_fraction": 0.825,
+          "accidental_false_merge_fraction": 0
+        },
+        "under_ambiguity": {
+          "genuine_merge_fraction": 0,
+          "accidental_false_merge_fraction": 0
+        },
+        "one_clean_after_attack": {
+          "genuine_merge_fraction": 0,
+          "accidental_false_merge_fraction": 0
+        },
+        "full_recovery": {
+          "genuine_merge_fraction": 0.825,
+          "accidental_false_merge_fraction": 0
+        }
+      }
+    },
+    "tracker_phase_receipt": {
+      "clear_pre_mean_target_genuine": 0.9960105418415208,
+      "ambiguous_mean_target_genuine": 0.6692235296121384,
+      "ambiguous_mean_target_accidental": 0.5109711535201223,
+      "ambiguous_motion_accuracy_accidental": 0.525,
+      "clear_post_mean_target_genuine": 0.9960336953170426
+    }
+  },
+  "boundary": "Recoverable temporal memory is required to withdraw and later restore local relation authority. Separate attack/recovery timescales win validation by a small margin but tie the symmetric EMA on the independent held-out test, so asymmetry is not yet established as necessary."
+}
