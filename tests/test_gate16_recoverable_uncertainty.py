@@ -16,12 +16,17 @@ class RecoverableUncertaintyTests(unittest.TestCase):
             threshold_train_trials=30,
             threshold_seed=160,
             train_seed=161,
-            test_seed=162,
-            address_seed=163,
+            validation_trials=24,
+            validation_seed=162,
+            test_seed=163,
+            address_seed=164,
         )
 
+        selected_name = report["model_selection"][
+            "selected_dynamic_policy"
+        ]
         selected = report["authority_policies"][
-            "symmetric_ema"
+            selected_name
         ]
         pre = selected["checkpoints"]["pre_attack"]
         attack = selected["checkpoints"]["under_ambiguity"]
@@ -43,27 +48,27 @@ class RecoverableUncertaintyTests(unittest.TestCase):
             threshold_train_trials=30,
             threshold_seed=170,
             train_seed=171,
-            test_seed=172,
-            address_seed=173,
+            validation_trials=24,
+            validation_seed=172,
+            test_seed=173,
+            address_seed=174,
         )
 
         policies = report["authority_policies"]
-        symmetric = policies["symmetric_ema"]
-        asymmetric = policies["asymmetric_eligibility"]
+        selected_name = report["model_selection"][
+            "selected_dynamic_policy"
+        ]
+        selected = policies[selected_name]
         permanent = policies["permanent_veto"]
         cumulative = policies["cumulative_mean"]
 
         self.assertLess(
-            symmetric["balanced_checkpoint_error"],
+            selected["balanced_checkpoint_error"],
             permanent["balanced_checkpoint_error"],
         )
         self.assertLessEqual(
-            symmetric["balanced_checkpoint_error"],
+            selected["balanced_checkpoint_error"],
             cumulative["balanced_checkpoint_error"],
-        )
-        self.assertLessEqual(
-            symmetric["balanced_checkpoint_error"],
-            asymmetric["balanced_checkpoint_error"],
         )
 
 
