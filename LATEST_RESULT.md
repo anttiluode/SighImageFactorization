@@ -1045,20 +1045,107 @@ which elevated motion instability precedes relapse. The gate shows that an
 RGB-derived predictor can exploit that contingency. It does not establish that
 motion surprise universally predicts failure in other worlds.
 
+## Gate 19: separate the observable from its learned meaning
+
+Gate 18 found an RGB-derived observable that could predict relapse before
+ordinary confidence diverged. Gate 19 asks whether the measurement itself is
+portable or whether the entire result is just one synthetic shortcut.
+
+Freeze the original Gate-18 motion-surprise rule, then evaluate five worlds:
+
+```text
+world                       stable p    relapse p
+baseline                      0.10        0.70
+preserved covariate shift     0.10        0.70
+weakened                      0.25        0.55
+broken                        0.40        0.40
+reversed                      0.70        0.10
+```
+
+The preserved-shift world also uses a different motion vocabulary and additional
+RGB sensor noise.
+
+Reference: 40 original training pairs, 30 calibration pairs, 80 untouched pairs
+per world.
+
+Frozen Gate-18 balanced accuracy:
+
+```text
+baseline                  0.87500
+preserved covariate       0.88125
+weakened                  0.65000
+broken                    0.50000
+reversed                  0.13750
+```
+
+This is the desired failure curve rather than invariance.
+
+The RGB measurement itself remains reliable:
+
+```text
+exact motion recovery       1.000 in every world
+common-fate recovery        1.000 in every world
+```
+
+and the oracle-motion predictor gives the same accuracies. The failure is
+therefore in the **meaning of surprise**, not in estimating surprise from RGB.
+
+Allow a 30-pair in-world calibration set to relearn only the scalar rule:
+
+```text
+baseline                  0.87500
+preserved covariate       0.88125
+weakened                  0.65000
+broken                    0.50000
+reversed                  0.83750
+```
+
+In the reversed world, recalibration flips the polarity:
+
+```text
+old rule:  low surprise  => stable
+new rule:  high surprise => stable
+```
+
+In the broken world, recalibration remains exactly chance because both classes
+have the same surprise distribution.
+
+So Gate 19 separates two objects that Gate 18 had fused:
+
+[
+\boxed{
+\text{portable observable}
+\quad\neq\quad
+\text{portable causal interpretation}
+}
+]
+
+The concrete relation-authority consequence under reversal is severe:
+
+```text
+frozen Gate-18 rule:
+    stable fast              0.225
+    relapse false-fast       0.950
+```
+
+A stale predictor is not merely less useful; it can authorize precisely the
+wrong relation.
+
 ## Next attacker
 
-Attack the predictor's **causal portability**, not its threshold.
+Gate 19 still gives recalibration **labeled outcomes in a batch**. A living
+system would not receive a magic calibration phase.
 
-Train on the Gate-18 relationship between motion instability and relapse, then
-change the world in three ways:
+The next gate should therefore make the contingency change while the system is
+running and reveal future outcomes only after a delay. Compare:
 
-1. preserve the relationship but change the motion vocabulary / sensor noise;
-2. weaken the relationship continuously rather than using 0.10 versus 0.70;
-3. explicitly **break or reverse the relationship** between motion surprise and
-   relapse.
+- frozen mapping,
+- all-history cumulative recalibration,
+- recent-window / exponentially weighted recalibration,
+- and an explicit change-point or surprise-on-outcomes detector.
 
-A useful predictive mechanism should transfer when the causal contingency
-survives, degrade as the contingency weakens, and fail honestly when the
-relationship is removed or reversed. That would separate a reusable observable
-from a synthetic shortcut.
-
+The system should detect that its predictor has become systematically wrong,
+withdraw predictive authority during the transition, then relearn the new
+mapping from subsequent outcomes. It must also distinguish **reversal** from
+**no-information**: one should eventually relearn; the other should remain
+uncertain instead of fitting noise.
