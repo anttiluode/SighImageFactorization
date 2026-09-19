@@ -1,0 +1,51 @@
+{
+  "gate": 19,
+  "title": "predictive cue portability across contingency shifts",
+  "ci_reference": {
+    "gate18_train_pairs": 40,
+    "calibration_pairs_per_scenario": 30,
+    "test_pairs_per_scenario": 80,
+    "frozen_gate18_rule": {
+      "threshold": 1,
+      "polarity": "low",
+      "training_balanced_accuracy": 0.8375
+    },
+    "scenarios": {
+      "baseline": {
+        "frozen_balanced_accuracy": 0.875,
+        "recalibrated_balanced_accuracy": 0.875,
+        "stable_fast_fraction": 0.975,
+        "relapse_false_fast_fraction": 0.225
+      },
+      "preserved_covariate_shift": {
+        "frozen_balanced_accuracy": 0.88125,
+        "recalibrated_balanced_accuracy": 0.88125,
+        "median_confidence": 0.9944917702971517,
+        "exact_motion_fraction": 1,
+        "common_fate_fraction": 1,
+        "stable_fast_fraction": 0.975,
+        "relapse_false_fast_fraction": 0.2125
+      },
+      "weakened_contingency": {
+        "frozen_balanced_accuracy": 0.65,
+        "recalibrated_balanced_accuracy": 0.65,
+        "stable_fast_fraction": 0.8375,
+        "relapse_false_fast_fraction": 0.5375
+      },
+      "broken_contingency": {
+        "frozen_balanced_accuracy": 0.5,
+        "recalibrated_balanced_accuracy": 0.5,
+        "stable_fast_fraction": 0.6375,
+        "relapse_false_fast_fraction": 0.6375
+      },
+      "reversed_contingency": {
+        "frozen_balanced_accuracy": 0.1375,
+        "recalibrated_balanced_accuracy": 0.8375,
+        "recalibrated_polarity": "high",
+        "stable_fast_fraction": 0.225,
+        "relapse_false_fast_fraction": 0.95
+      }
+    }
+  },
+  "boundary": "The RGB motion-surprise observable transfers across a covariate shift when its instability/relapse contingency is preserved. Predictive accuracy degrades as that contingency weakens, becomes chance when it is removed, and becomes anti-predictive when it reverses. Small labeled recalibration can flip a reversed mapping but cannot create information in a broken contingency."
+}
